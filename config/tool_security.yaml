@@ -1,0 +1,13 @@
+allowed_directories:
+  - data
+  - config/skills
+  - docs
+allowed_domains:
+  - "*"
+fetch_timeout_seconds: 10
+max_fetch_chars: 8000
+search_provider: duckduckgo
+search_result_limit: 5
+db_write_protection_enabled: true
+db_confirm_field: confirm_write
+max_file_size_mb: 10

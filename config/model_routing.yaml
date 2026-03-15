@@ -1,0 +1,23 @@
+default_provider: cloud
+providers:
+  local:
+    model: local-llm-internal
+    timeout_seconds: 12
+    max_tokens: 1024
+  cloud:
+    model: cloud-llm-general
+    timeout_seconds: 20
+    max_tokens: 2048
+rules:
+  - task_type: "automation"
+    sensitivity: "high"
+    provider: "local"
+  - task_type: "qa"
+    sensitivity: "high"
+    provider: "local"
+  - task_type: "qa"
+    sensitivity: "low"
+    provider: "cloud"
+fallback_order:
+  - local
+  - cloud
