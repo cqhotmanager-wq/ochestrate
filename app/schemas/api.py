@@ -25,8 +25,8 @@ class ExecutionPolicy(BaseModel):
 
 
 class UnifiedRequest(BaseModel):
-    tenant_id: str
-    user_id: str
+    tenant_id: str | None = Field(default=None, description="由访问令牌解析，客户端字段将被忽略。")
+    user_id: str | None = Field(default=None, description="由访问令牌解析，客户端字段将被忽略。")
     session_id: str
     task_type: Literal["qa", "automation", "analysis"] = "qa"
     input: str = Field(min_length=1)
@@ -49,6 +49,7 @@ class Action(BaseModel):
     tool_name: str
     status: Literal["success", "skipped", "failed"]
     output: dict[str, Any] = Field(default_factory=dict)
+    error_code: str | None = None
     audit_ref: str | None = None
     policy_applied: dict[str, Any] = Field(default_factory=dict)
 
@@ -81,8 +82,8 @@ class TaskStatusResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    tenant_id: str
-    user_id: str
+    tenant_id: str | None = None
+    user_id: str | None = None
     trace_id: str
     is_correct: bool
     score: float = Field(ge=0.0, le=1.0)
@@ -91,7 +92,7 @@ class FeedbackRequest(BaseModel):
 
 
 class IngestTextRequest(BaseModel):
-    tenant_id: str
+    tenant_id: str | None = None
     source_id: str
     text: str = Field(min_length=1)
 
@@ -102,4 +103,3 @@ class CreateSkillRequest(BaseModel):
     name: str
     prompt_template: str
     config: dict[str, Any] = Field(default_factory=dict)
-

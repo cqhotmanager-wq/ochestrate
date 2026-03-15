@@ -47,7 +47,12 @@ class ToolHub:
                 cache_hit=True,
             )
 
-        output = tool.run(call.params)
+        params = dict(call.params)
+        params.setdefault("_tenant_id", call.tenant_id)
+        params.setdefault("_user_id", call.user_id)
+        params.setdefault("_user_role", call.user_role)
+
+        output = tool.run(params)
         self._metrics.inc("tool.success")
         audit_ref = self._audit.record(
             "tool_invoke",
@@ -58,7 +63,7 @@ class ToolHub:
                 "tool_name": call.tool_name,
                 "user_role": call.user_role,
                 "idempotency_key": call.idempotency_key,
-                "params": call.params,
+                "params": params,
             },
         )
         result = ToolInvokeResult(
@@ -69,4 +74,3 @@ class ToolHub:
         if tool.idempotent:
             self._idempotency_cache[call.idempotency_key] = result
         return result
-

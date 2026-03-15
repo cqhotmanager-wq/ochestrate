@@ -35,10 +35,12 @@ def security() -> ToolSecurityConfig:
 
 
 def test_web_fetch_tool_success(monkeypatch: pytest.MonkeyPatch, security: ToolSecurityConfig) -> None:
-    def fake_get(url: str, timeout: int):
+    def fake_session_get(self, url: str, timeout: int, allow_redirects: bool, stream: bool):
+        _ = self
+        _ = allow_redirects, stream
         return DummyResponse("<html><title>T</title><body>Hello</body></html>")
 
-    monkeypatch.setattr("app.tools.web_tools.requests.get", fake_get)
+    monkeypatch.setattr("app.tools.web_tools.requests.Session.get", fake_session_get)
     tool = WebFetchTool(security=security)
     result = tool.run({"url": "https://example.com/page"})
     assert result["status_code"] == 200
@@ -60,10 +62,15 @@ def test_web_search_tool(monkeypatch: pytest.MonkeyPatch, security: ToolSecurity
             return DummyResponse(search_html)
         return DummyResponse("<html><body>Fetched A</body></html>")
 
+    def fake_session_get(self, url: str, timeout: int, allow_redirects: bool, stream: bool):
+        _ = self
+        _ = timeout, allow_redirects, stream
+        return DummyResponse("<html><body>Fetched A</body></html>")
+
     monkeypatch.setattr("app.tools.web_tools.requests.get", fake_get)
+    monkeypatch.setattr("app.tools.web_tools.requests.Session.get", fake_session_get)
     fetch_tool = WebFetchTool(security=security)
     search_tool = WebSearchTool(security=security, fetch_tool=fetch_tool)
     result = search_tool.run({"query": "test", "include_fetch": True})
     assert result["results"]
     assert result["results"][0]["title"] == "Result A"
-

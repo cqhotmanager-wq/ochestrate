@@ -77,8 +77,8 @@ class OrchestratorService:
                 steps=state.get("planner_steps", []),
                 user_role=request.metadata.get("role", "employee"),
                 trace_id=state["trace_id"],
-                tenant_id=request.tenant_id,
-                user_id=request.user_id,
+                tenant_id=request.tenant_id or "",
+                user_id=request.user_id or "",
                 policy=request.policy,
                 tool_overrides=request.tool_overrides,
             )
@@ -115,6 +115,8 @@ class OrchestratorService:
         return graph.compile()
 
     def run(self, request: UnifiedRequest) -> UnifiedResponse:
+        tenant_id = request.tenant_id or ""
+        user_id = request.user_id or ""
         trace_id = self._trace.new_trace_id()
         self._metrics.inc("request.total")
         state: dict[str, Any] = {
@@ -140,14 +142,14 @@ class OrchestratorService:
         fallback_triggered = state.get("fallback_triggered", False)
 
         short_update = self._memory.write_short(
-            tenant_id=request.tenant_id,
-            user_id=request.user_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
             session_id=request.session_id,
             content=f"Q:{request.input}\nA:{reviewed_answer[:300]}",
         )
         long_update = self._memory.write_long(
-            tenant_id=request.tenant_id,
-            user_id=request.user_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
             content=f"Preferred context from trace {trace_id}",
             tags=["auto-summary"],
         )
@@ -156,7 +158,7 @@ class OrchestratorService:
             "orchestration.completed",
             {
                 "trace_id": trace_id,
-                "tenant_id": request.tenant_id,
+                "tenant_id": tenant_id,
                 "task_type": request.task_type,
                 "confidence": confidence,
                 "citations": len(citations),
@@ -185,8 +187,8 @@ class OrchestratorService:
             steps=planner_steps,
             user_role=request.metadata.get("role", "employee"),
             trace_id=state["trace_id"],
-            tenant_id=request.tenant_id,
-            user_id=request.user_id,
+            tenant_id=request.tenant_id or "",
+            user_id=request.user_id or "",
             policy=request.policy,
             tool_overrides=request.tool_overrides,
         )
@@ -210,8 +212,10 @@ class OrchestratorService:
         return state
 
     def _compose_prompt(self, request: UnifiedRequest, citations: list[Any]) -> str:
-        short_ctx = "\n".join(self._memory.read_short(request.tenant_id, request.user_id, request.session_id))
-        long_ctx = "\n".join(self._memory.read_long(request.tenant_id, request.user_id, request.input))
+        tenant_id = request.tenant_id or ""
+        user_id = request.user_id or ""
+        short_ctx = "\n".join(self._memory.read_short(tenant_id, user_id, request.session_id))
+        long_ctx = "\n".join(self._memory.read_long(tenant_id, user_id, request.input))
         evidence = "\n".join(c.snippet for c in citations)
 
         prompt = self._prompt_assembly.assemble(
@@ -236,4 +240,3 @@ class OrchestratorService:
             short_memory=short_ctx,
             long_memory=long_ctx,
         )
-

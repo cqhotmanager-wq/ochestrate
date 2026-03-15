@@ -26,22 +26,24 @@ def test_database_tool_query_and_write_guard(tmp_path) -> None:
     dsn = f"sqlite+pysqlite:///{db_path}"
     engine = create_engine(dsn)
     with engine.begin() as conn:
-        conn.execute(text("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)"))
-        conn.execute(text("INSERT INTO items (name) VALUES ('a')"))
+        conn.execute(text("CREATE TABLE items (id INTEGER PRIMARY KEY, tenant_id TEXT, name TEXT)"))
+        conn.execute(text("INSERT INTO items (tenant_id, name) VALUES ('acme', 'a')"))
 
     tool = DatabaseTool(dsn=dsn, security=_security())
-    query_result = tool.run({"operation": "query", "sql": "SELECT id, name FROM items"})
+    query_result = tool.run(
+        {"operation": "query", "sql": "SELECT id, name FROM items WHERE tenant_id='acme'", "_tenant_id": "acme"}
+    )
     assert query_result["count"] == 1
 
     with pytest.raises(PermissionError):
-        tool.run({"operation": "execute", "sql": "DELETE FROM items"})
+        tool.run({"operation": "execute", "sql": "DELETE FROM items WHERE tenant_id='acme'", "_tenant_id": "acme"})
 
     exec_result = tool.run(
         {
             "operation": "execute",
-            "sql": "DELETE FROM items",
+            "sql": "DELETE FROM items WHERE tenant_id='acme'",
             "confirm_write": True,
+            "_tenant_id": "acme",
         }
     )
     assert exec_result["affected_rows"] >= 1
-

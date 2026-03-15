@@ -27,6 +27,20 @@ class Settings(BaseSettings):
 
     audit_log_path: Path = Path("logs/audit.log")
     worker_poll_interval_seconds: float = 0.2
+    task_queue_backend: str = "redis"
+    redis_url: str = "redis://localhost:6379/0"
+    redis_queue_name: str = "agent_tasks"
+
+    jwt_secret: str = "replace-this-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_minutes: int = 30
+    refresh_token_ttl_days: int = 7
+
+    auth_require_enabled: bool = True
+    auth_bootstrap_admin_enabled: bool = True
+
+    skill_cache_ttl_seconds: int = 60
+    retrieval_cache_ttl_seconds: int = 30
 
     model_config = SettingsConfigDict(
         env_prefix="AGENT_",

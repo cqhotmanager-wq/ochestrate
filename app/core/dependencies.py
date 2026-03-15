@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import logging
 from pathlib import Path
+import socket
+from urllib.parse import urlparse
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 
 from app.agents.executor import ExecutorAgent
 from app.agents.planner import PlannerAgent
 from app.agents.retriever import RetrieverAgent
 from app.agents.reviewer import ReviewerAgent
+from app.auth.service import AuthService
 from app.context.manager import ContextManager
 from app.core.config import Settings
 from app.learning.pipeline import EnterpriseLearningPipeline
@@ -22,13 +29,18 @@ from app.rag.retriever import HybridRetriever
 from app.rag.store import InMemoryKnowledgeStore
 from app.skills.center import SkillCenter
 from app.skills.context import SkillContextService
+from app.storage.repositories.auth_repo import AuthRepository
+from app.storage.repositories.task_repo import TaskRepository
 from app.tools.database_tool import DatabaseTool
 from app.tools.file_tool import FileTool
 from app.tools.hub import ToolHub
 from app.tools.office import CreateCalendarEventTool, SendEmailTool
 from app.tools.security import ToolSecurityConfig
 from app.tools.web_tools import WebFetchTool, WebSearchTool
+from app.workers.queue_backend import InMemoryQueueBackend, QueueBackend, RedisQueueBackend
 from app.workers.task_worker import TaskManager
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceContainer:
@@ -37,7 +49,17 @@ class ServiceContainer:
         self.workspace = Path.cwd()
         self.trace = TraceService()
         self.metrics = MetricsRegistry()
-        self.audit = AuditLogger(self.settings.audit_log_path)
+        self.mysql_engine = self._build_mysql_engine(self.settings.mysql_dsn)
+        self.task_repository = TaskRepository(self.mysql_engine)
+        self.audit = AuditLogger(self.settings.audit_log_path, persistent_sink=self.task_repository)
+        self.auth_repository = AuthRepository(self.mysql_engine)
+        self.auth_service = AuthService(
+            repository=self.auth_repository,
+            jwt_secret=self.settings.jwt_secret,
+            jwt_algorithm=self.settings.jwt_algorithm,
+            access_token_ttl_minutes=self.settings.access_token_ttl_minutes,
+            refresh_token_ttl_days=self.settings.refresh_token_ttl_days,
+        )
 
         self.memory_service = MemoryService(
             short_turns=self.settings.short_memory_turns,
@@ -86,8 +108,11 @@ class ServiceContainer:
             audit=self.audit,
             max_skill_items=self.settings.prompt_skill_max_items,
         )
+        self.queue_backend = self._build_queue_backend()
         self.task_manager = TaskManager(
             orchestrator=self.orchestrator,
+            queue_backend=self.queue_backend,
+            task_repository=self.task_repository,
             poll_interval_seconds=self.settings.worker_poll_interval_seconds,
         )
 
@@ -100,8 +125,44 @@ class ServiceContainer:
         self.tool_hub.register(WebSearchTool(self.tool_security, fetch_tool=fetch_tool))
         self.tool_hub.register(DatabaseTool(self.settings.mysql_dsn, security=self.tool_security))
 
+    @staticmethod
+    def _build_mysql_engine(dsn: str) -> Engine | None:
+        """MySQL 可用时启用持久化，不可用时自动回落内存模式。"""
+        try:
+            engine = create_engine(dsn, pool_pre_ping=True)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return engine
+        except Exception as exc:
+            logger.warning("mysql unavailable, fallback to in-memory repository: %s", exc)
+            return None
+
+    def _build_queue_backend(self) -> QueueBackend:
+        backend = (self.settings.task_queue_backend or "memory").strip().lower()
+        if backend == "redis" and self._is_redis_reachable(self.settings.redis_url):
+            try:
+                return RedisQueueBackend(
+                    redis_url=self.settings.redis_url,
+                    queue_name=self.settings.redis_queue_name,
+                )
+            except Exception as exc:
+                logger.warning("redis backend init failed, fallback to memory queue: %s", exc)
+        return InMemoryQueueBackend()
+
+    @staticmethod
+    def _is_redis_reachable(redis_url: str) -> bool:
+        parsed = urlparse(redis_url)
+        host = parsed.hostname
+        port = parsed.port or 6379
+        if not host:
+            return False
+        try:
+            with socket.create_connection((host, port), timeout=0.5):
+                return True
+        except OSError:
+            return False
+
 
 @lru_cache(maxsize=1)
 def get_container() -> ServiceContainer:
     return ServiceContainer()
-

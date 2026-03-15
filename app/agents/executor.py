@@ -74,6 +74,7 @@ class ExecutorAgent:
                         tool_name=tool_name,
                         status="failed",
                         output={"error": str(exc)},
+                        error_code="POLICY_DENIED",
                         policy_applied={"permission": "denied"},
                     )
                 )
@@ -83,7 +84,7 @@ class ExecutorAgent:
                         tool_name=tool_name,
                         status="failed",
                         output={"error": str(exc)},
+                        error_code="TOOL_EXECUTION_ERROR",
                     )
                 )
         return actions
-

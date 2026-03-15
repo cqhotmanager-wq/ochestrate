@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from urllib.parse import quote_plus
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,10 +23,9 @@ class WebFetchTool:
         url = str(params.get("url") or "").strip()
         if not url:
             raise ValueError("url is required")
-        if not self._security.is_domain_allowed(url):
+        if not self._security.is_url_safe(url):
             raise PermissionError(f"domain is not allowed for url '{url}'")
-
-        response = requests.get(url, timeout=self._security.fetch_timeout_seconds)
+        response = self._safe_get(url)
         content_type = response.headers.get("content-type", "").lower()
         body = response.text
         title = ""
@@ -40,12 +40,48 @@ class WebFetchTool:
 
         trimmed = body[: self._security.max_fetch_chars]
         return {
-            "url": url,
+            "url": getattr(response, "url", url),
             "status_code": response.status_code,
             "content_type": content_type,
             "title": title,
             "text": trimmed,
         }
+
+    def _safe_get(self, url: str) -> requests.Response:
+        """
+        手动重定向控制，确保每次跳转都经过域名/协议/私网校验，避免 SSRF。
+        """
+        current = url
+        with requests.Session() as session:
+            for _ in range(self._security.max_redirects + 1):
+                resp = session.get(
+                    current,
+                    timeout=self._security.fetch_timeout_seconds,
+                    allow_redirects=False,
+                    stream=True,
+                )
+                location = resp.headers.get("location")
+                if location and resp.is_redirect:
+                    next_url = urljoin(current, location)
+                    if not self._security.is_url_safe(next_url):
+                        raise PermissionError(f"redirect target is not allowed: '{next_url}'")
+                    current = next_url
+                    continue
+
+                self._validate_content_headers(resp)
+                text = resp.text
+                if len(text) > self._security.max_fetch_chars:
+                    resp._content = text[: self._security.max_fetch_chars].encode(resp.encoding or "utf-8")
+                return resp
+        raise ValueError("too many redirects")
+
+    def _validate_content_headers(self, response: requests.Response) -> None:
+        content_type = (response.headers.get("content-type") or "").lower()
+        if not any(x in content_type for x in ("text", "json", "xml", "html", "markdown")):
+            raise ValueError(f"unsupported content type '{content_type}'")
+        content_length = response.headers.get("content-length")
+        if content_length and int(content_length) > self._security.max_fetch_chars * 4:
+            raise ValueError("response body is too large")
 
 
 class WebSearchTool:
@@ -76,12 +112,12 @@ class WebSearchTool:
             anchor = result.select_one(".result__a")
             if anchor is None:
                 continue
-            href = anchor.get("href") or ""
+            href = self._normalize_result_url(anchor.get("href") or "")
             title = anchor.get_text(strip=True)
             snippet_el = result.select_one(".result__snippet")
             snippet = snippet_el.get_text(" ", strip=True) if snippet_el else ""
             item = {"title": title, "url": href, "snippet": snippet}
-            if include_fetch and href and self._security.is_domain_allowed(href):
+            if include_fetch and href and self._security.is_url_safe(href):
                 try:
                     fetched = self._fetch_tool.run({"url": href})
                     item["fetched_excerpt"] = fetched.get("text", "")
@@ -93,3 +129,11 @@ class WebSearchTool:
 
         return {"query": query, "provider": self._security.search_provider, "results": results}
 
+    @staticmethod
+    def _normalize_result_url(url: str) -> str:
+        parsed = urlparse(url)
+        if "duckduckgo.com" in (parsed.netloc or "") and parsed.path.startswith("/l/"):
+            for part in (parsed.query or "").split("&"):
+                if part.startswith("uddg="):
+                    return unquote(part[len("uddg=") :])
+        return url

@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision = "20260316_0001"
+down_revision = None
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_credentials (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          tenant_id VARCHAR(64) NOT NULL,
+          user_id VARCHAR(64) NOT NULL,
+          username VARCHAR(128) NOT NULL,
+          password_hash TEXT NOT NULL,
+          role VARCHAR(32) NOT NULL DEFAULT 'employee',
+          status VARCHAR(32) NOT NULL DEFAULT 'active',
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_user_credentials (tenant_id, username),
+          UNIQUE KEY uk_user_credentials_user_id (tenant_id, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          token_id VARCHAR(64) NOT NULL UNIQUE,
+          tenant_id VARCHAR(64) NOT NULL,
+          user_id VARCHAR(64) NOT NULL,
+          session_id VARCHAR(64) NOT NULL,
+          refresh_token_hash TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          revoked TINYINT(1) NOT NULL DEFAULT 0,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          KEY idx_refresh_lookup (tenant_id, user_id, session_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS task_queue_status (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          task_id VARCHAR(64) NOT NULL UNIQUE,
+          tenant_id VARCHAR(64) NOT NULL,
+          user_id VARCHAR(64) NOT NULL,
+          session_id VARCHAR(64) NOT NULL,
+          task_type VARCHAR(32) NOT NULL,
+          status VARCHAR(32) NOT NULL,
+          trace_id VARCHAR(64) DEFAULT NULL,
+          request_json JSON NOT NULL,
+          result_json JSON NULL,
+          error_message TEXT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          KEY idx_task_queue_status (tenant_id, status),
+          KEY idx_task_queue_trace (trace_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_events (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          event_id VARCHAR(64) NOT NULL UNIQUE,
+          event_type VARCHAR(64) NOT NULL,
+          trace_id VARCHAR(64) DEFAULT NULL,
+          tenant_id VARCHAR(64) DEFAULT NULL,
+          payload_json JSON NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          KEY idx_audit_event_trace (trace_id),
+          KEY idx_audit_event_type (event_type, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+
+def downgrade() -> None:
+    op.execute("DROP TABLE IF EXISTS audit_events")
+    op.execute("DROP TABLE IF EXISTS task_queue_status")
+    op.execute("DROP TABLE IF EXISTS refresh_tokens")
+    op.execute("DROP TABLE IF EXISTS user_credentials")

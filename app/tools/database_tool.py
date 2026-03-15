@@ -25,6 +25,8 @@ class DatabaseTool:
         sql = str(params.get("sql") or "").strip()
         if not sql:
             raise ValueError("sql is required")
+        tenant_id = str(params.get("_tenant_id") or "").strip()
+        tenant_column = str((params.get("options") or {}).get("tenant_column", "tenant_id")).strip()
 
         if self._security.db_write_protection_enabled and self._is_write_sql(sql):
             confirm = bool(params.get(self._security.db_confirm_field, False))
@@ -32,6 +34,8 @@ class DatabaseTool:
                 raise PermissionError(
                     f"write SQL requires explicit '{self._security.db_confirm_field}=true'"
                 )
+        if self._security.db_require_tenant_scope:
+            self._ensure_tenant_scope(sql=sql, tenant_id=tenant_id, tenant_column=tenant_column)
 
         engine = self._get_engine()
         if operation == "query":
@@ -69,3 +73,17 @@ class DatabaseTool:
             "REVOKE",
         }
 
+    @staticmethod
+    def _ensure_tenant_scope(sql: str, tenant_id: str, tenant_column: str) -> None:
+        """
+        粗粒度租户约束：要求 SQL 中出现 tenant 字段过滤，避免跨租户全表操作。
+        """
+        if not tenant_id:
+            raise PermissionError("tenant scope check failed: tenant_id is required")
+        normalized = " ".join(sql.lower().split())
+        column = tenant_column.lower()
+        if f"{column} =" in normalized or f"{column}=" in normalized:
+            return
+        if f":{column}" in normalized or f"%({column})s" in normalized:
+            return
+        raise PermissionError(f"tenant scope check failed: missing '{tenant_column}' condition")

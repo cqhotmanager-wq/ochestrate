@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.auth.deps import require_auth_context
+from app.auth.schemas import AuthContext, UserCreateRequest, UserResponse, UserUpdateRequest
+from app.core.dependencies import ServiceContainer, get_container
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.post("", response_model=UserResponse)
+def create_user(
+    payload: UserCreateRequest,
+    auth: AuthContext = Depends(require_auth_context),
+    container: ServiceContainer = Depends(get_container),
+) -> UserResponse:
+    _ensure_admin(auth)
+    record = container.auth_service.create_user(
+        tenant_id=auth.tenant_id,
+        username=payload.username,
+        password=payload.password,
+        role=payload.role,
+        status=payload.status,
+    )
+    return UserResponse(
+        tenant_id=record.tenant_id,
+        user_id=record.user_id,
+        username=record.username,
+        role=record.role,
+        status=record.status,
+        created_at=record.created_at,
+    )
+
+
+@router.get("", response_model=list[UserResponse])
+def list_users(
+    auth: AuthContext = Depends(require_auth_context),
+    container: ServiceContainer = Depends(get_container),
+) -> list[UserResponse]:
+    _ensure_admin(auth)
+    users = container.auth_service.list_users(auth.tenant_id)
+    return [
+        UserResponse(
+            tenant_id=u.tenant_id,
+            user_id=u.user_id,
+            username=u.username,
+            role=u.role,
+            status=u.status,
+            created_at=u.created_at,
+        )
+        for u in users
+    ]
+
+
+@router.patch("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: str,
+    payload: UserUpdateRequest,
+    auth: AuthContext = Depends(require_auth_context),
+    container: ServiceContainer = Depends(get_container),
+) -> UserResponse:
+    _ensure_admin(auth)
+    user = container.auth_service.update_user(
+        tenant_id=auth.tenant_id,
+        user_id=user_id,
+        role=payload.role,
+        status=payload.status,
+        password=payload.password,
+    )
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+    return UserResponse(
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        username=user.username,
+        role=user.role,
+        status=user.status,
+        created_at=user.created_at,
+    )
+
+
+def _ensure_admin(auth: AuthContext) -> None:
+    if auth.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin role required")
