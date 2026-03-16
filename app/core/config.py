@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     env: str = "dev"
     api_prefix: str = "/v1"
 
-    mysql_dsn: str = "mysql+pymysql://root:root@localhost:3306/agent_platform"
+    mysql_dsn: str = "mysql+pymysql://root:123456@127.0.0.1:3306/ochestrate"
     milvus_uri: str = "http://localhost:19530"
 
     model_routing_path: Path = Path("config/model_routing.yaml")

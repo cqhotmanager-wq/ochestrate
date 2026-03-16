@@ -6,17 +6,19 @@ import os
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from app.storage.orm import Base
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 优先使用环境变量，便于 CI/CD 与本地切换数据库。
+# Prefer runtime environment variable so CI and local runs can target different DBs.
 database_url = os.getenv("AGENT_MYSQL_DSN")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

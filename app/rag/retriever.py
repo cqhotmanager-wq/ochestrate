@@ -3,11 +3,11 @@ from __future__ import annotations
 """混合检索器：将知识分块转换为可返回的引用结果。"""
 
 from app.schemas.api import Citation
-from app.rag.store import InMemoryKnowledgeStore
+from app.rag.store import KnowledgeStore
 
 
 class HybridRetriever:
-    def __init__(self, store: InMemoryKnowledgeStore) -> None:
+    def __init__(self, store: KnowledgeStore) -> None:
         self._store = store
 
     def retrieve(self, tenant_id: str, query: str, limit: int = 5) -> list[Citation]:

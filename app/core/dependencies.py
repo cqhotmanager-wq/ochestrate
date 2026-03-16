@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.agents.executor import ExecutorAgent
 from app.agents.planner import PlannerAgent
@@ -26,10 +27,13 @@ from app.orchestration.service import OrchestratorService
 from app.prompts.assembly import PromptAssemblyService
 from app.rag.ingestion import IngestionPipeline
 from app.rag.retriever import HybridRetriever
-from app.rag.store import InMemoryKnowledgeStore
+from app.rag.store import KnowledgeStore
 from app.skills.center import SkillCenter
 from app.skills.context import SkillContextService
+from app.storage.orm import create_session_factory
 from app.storage.repositories.auth_repo import AuthRepository
+from app.storage.repositories.feedback_repo import FeedbackRepository
+from app.storage.repositories.knowledge_repo import KnowledgeRepository
 from app.storage.repositories.task_repo import TaskRepository
 from app.tools.database_tool import DatabaseTool
 from app.tools.file_tool import FileTool
@@ -49,10 +53,18 @@ class ServiceContainer:
         self.workspace = Path.cwd()
         self.trace = TraceService()
         self.metrics = MetricsRegistry()
+
         self.mysql_engine = self._build_mysql_engine(self.settings.mysql_dsn)
-        self.task_repository = TaskRepository(self.mysql_engine)
+        self.mysql_session_factory: sessionmaker[Session] | None = (
+            create_session_factory(self.mysql_engine) if self.mysql_engine is not None else None
+        )
+
+        self.task_repository = TaskRepository(self.mysql_session_factory)
         self.audit = AuditLogger(self.settings.audit_log_path, persistent_sink=self.task_repository)
-        self.auth_repository = AuthRepository(self.mysql_engine)
+        self.auth_repository = AuthRepository(self.mysql_session_factory)
+        self.feedback_repository = FeedbackRepository(self.mysql_session_factory)
+        self.knowledge_repository = KnowledgeRepository(self.mysql_session_factory)
+
         self.auth_service = AuthService(
             repository=self.auth_repository,
             jwt_secret=self.settings.jwt_secret,
@@ -67,7 +79,7 @@ class ServiceContainer:
         )
         self.context_manager = ContextManager(max_tokens=self.settings.max_context_tokens)
 
-        self.knowledge_store = InMemoryKnowledgeStore()
+        self.knowledge_store = KnowledgeStore(repository=self.knowledge_repository)
         self.ingestion_pipeline = IngestionPipeline()
         self.rag_retriever = HybridRetriever(self.knowledge_store)
 
@@ -77,7 +89,7 @@ class ServiceContainer:
             scan_dirs=self.settings.skill_scan_dirs,
             skill_scan_glob=self.settings.skill_scan_glob,
         )
-        self.learning_pipeline = EnterpriseLearningPipeline()
+        self.learning_pipeline = EnterpriseLearningPipeline(repository=self.feedback_repository)
         self.prompt_assembly = PromptAssemblyService(max_tokens=self.settings.max_context_tokens)
 
         self.tool_security = ToolSecurityConfig.from_file(
@@ -125,29 +137,41 @@ class ServiceContainer:
         self.tool_hub.register(WebSearchTool(self.tool_security, fetch_tool=fetch_tool))
         self.tool_hub.register(DatabaseTool(self.settings.mysql_dsn, security=self.tool_security))
 
-    @staticmethod
-    def _build_mysql_engine(dsn: str) -> Engine | None:
-        """MySQL 可用时启用持久化，不可用时自动回落内存模式。"""
+    def _build_mysql_engine(self, dsn: str) -> Engine | None:
         try:
             engine = create_engine(dsn, pool_pre_ping=True)
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             return engine
         except Exception as exc:
+            if self._is_prod_env():
+                raise RuntimeError(f"mysql unavailable in prod: {exc}") from exc
             logger.warning("mysql unavailable, fallback to in-memory repository: %s", exc)
             return None
 
     def _build_queue_backend(self) -> QueueBackend:
         backend = (self.settings.task_queue_backend or "memory").strip().lower()
-        if backend == "redis" and self._is_redis_reachable(self.settings.redis_url):
+        if backend == "redis":
+            reachable = self._is_redis_reachable(self.settings.redis_url)
+            if not reachable:
+                if self._is_prod_env():
+                    raise RuntimeError("redis backend required in prod but redis is unreachable")
+                logger.warning("redis unavailable, fallback to in-memory queue")
+                return InMemoryQueueBackend()
             try:
                 return RedisQueueBackend(
                     redis_url=self.settings.redis_url,
                     queue_name=self.settings.redis_queue_name,
                 )
             except Exception as exc:
+                if self._is_prod_env():
+                    raise RuntimeError(f"redis backend init failed in prod: {exc}") from exc
                 logger.warning("redis backend init failed, fallback to memory queue: %s", exc)
+                return InMemoryQueueBackend()
         return InMemoryQueueBackend()
+
+    def _is_prod_env(self) -> bool:
+        return (self.settings.env or "").strip().lower() in {"prod", "production"}
 
     @staticmethod
     def _is_redis_reachable(redis_url: str) -> bool:

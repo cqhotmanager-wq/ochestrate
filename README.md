@@ -1,31 +1,100 @@
-# Enterprise Agent Platform
+﻿# Enterprise Agent Platform
 
-企业级智能体平台一期工程骨架，支持：
+Phase-2 baseline with durable persistence for auth/task/audit/feedback/knowledge.
 
-- 多智能体编排（Planner/Retriever/Executor/Reviewer）
-- 统一请求响应协议（UnifiedRequest/UnifiedResponse）
-- JWT + Refresh 认证、用户管理、租户隔离
-- Redis 队列 + MySQL 状态持久化 + 任务恢复
-- ToolHub 工具中心（文件/网络/搜索/数据库/办公工具）
-- Skill Center + SKILL.md 双源技能加载与系统提示词注入
-- RAG 摄取与检索接口（可扩展 Milvus/MySQL）
-- 审计日志与基础指标
+## Configuration Overview
 
-## Runtime Versions
+The service reads configuration from environment variables (`AGENT_*`). It does **not** auto-load `.env` by default.
 
-- `langchain==1.2.1`
-- `langgraph==1.1.2`
+Primary entry points:
 
-## Quick Start
+- Database: `AGENT_MYSQL_DSN` (see `app/core/config.py`)
+- Model routing: `config/model_routing.yaml`
+- Middleware auth context: `app/middleware/auth_context.py`
 
-```bash
-python -m venv .venv
-. .venv/Scripts/activate
-pip install -e .[dev]
-uvicorn app.main:app --reload
+Default baseline:
+
+- MySQL DSN: `mysql+pymysql://root:123456@127.0.0.1:3306/ochestrate`
+- API prefix: `/v1`
+- Runtime policy:
+  - `AGENT_ENV=prod`: MySQL/Redis are required and startup fails if unavailable
+  - `AGENT_ENV=dev|test`: in-memory fallback is allowed
+
+## Model Routing Config
+
+Edit `config/model_routing.yaml`:
+
+- `default_provider`
+- `providers.local` / `providers.cloud`
+- `rules` (route by `task_type + sensitivity`)
+- `fallback_order`
+
+Built-in provider clients are currently `local` and `cloud` (`app/models/providers.py`).
+
+## Middleware/Auth Config
+
+- Middleware registration: `app.main: app.add_middleware(AuthContextMiddleware)`
+- Route-level auth enforcement: `app/auth/deps.py` via `require_auth_context`
+- `AGENT_AUTH_BOOTSTRAP_ADMIN_ENABLED` is effective
+- `AGENT_AUTH_REQUIRE_ENABLED` is currently a config field only (not wired as a global bypass switch)
+
+## Startup Runbook (PowerShell + uv)
+
+1. Install dependencies
+
+```powershell
+uv sync --extra dev
 ```
 
-## Main APIs
+2. Start infrastructure
+
+```powershell
+docker compose up -d mysql etcd minio milvus
+```
+
+3. Set runtime environment variables
+
+```powershell
+$env:AGENT_ENV = "dev"
+$env:AGENT_MYSQL_DSN = "mysql+pymysql://root:123456@127.0.0.1:3306/ochestrate"
+$env:AGENT_MODEL_ROUTING_PATH = "config/model_routing.yaml"
+$env:AGENT_TOOL_SECURITY_PATH = "config/tool_security.yaml"
+$env:AGENT_JWT_SECRET = "change-this-secret"
+
+# Recommended when Redis is not running
+$env:AGENT_TASK_QUEUE_BACKEND = "memory"
+```
+
+4. Run migration
+
+```powershell
+uv run alembic upgrade head
+```
+
+5. Start API
+
+```powershell
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+6. Minimal first-use flow
+
+```powershell
+# Health check
+curl http://127.0.0.1:8000/health
+
+# Bootstrap admin
+curl -X POST http://127.0.0.1:8000/v1/auth/bootstrap-admin `
+  -H "Content-Type: application/json" `
+  -d "{\"tenant_id\":\"acme\",\"username\":\"admin\",\"password\":\"admin123\",\"role\":\"admin\",\"status\":\"active\"}"
+
+# Login
+curl -X POST http://127.0.0.1:8000/v1/auth/login `
+  -H "Content-Type: application/json" `
+  -d "{\"tenant_id\":\"acme\",\"username\":\"admin\",\"password\":\"admin123\"}"
+```
+
+## Core APIs
 
 - `POST /v1/auth/login`
 - `POST /v1/auth/refresh`
@@ -38,8 +107,8 @@ uvicorn app.main:app --reload
 - `POST /v1/knowledge/ingest-text`
 - `POST /v1/skills`
 
-## Chinese Documentation
+## Docs
 
-- 详细中文文档：`docs/中文使用说明.md`
-- MySQL 示例建表：`docs/sql/mysql_schema.sql`
-- Tool 安全策略：`config/tool_security.yaml`
+- Architecture: `docs/architecture.md`
+- Chinese guide: `docs/中文使用说明.md`
+- MySQL schema: `docs/sql/mysql_schema.sql`

@@ -23,10 +23,12 @@ def upgrade() -> None:
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           UNIQUE KEY uk_user_credentials (tenant_id, username),
-          UNIQUE KEY uk_user_credentials_user_id (tenant_id, user_id)
+          UNIQUE KEY uk_user_credentials_user_id (tenant_id, user_id),
+          KEY idx_user_role_status (tenant_id, role, status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
+
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -39,10 +41,12 @@ def upgrade() -> None:
           expires_at DATETIME NOT NULL,
           revoked TINYINT(1) NOT NULL DEFAULT 0,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          KEY idx_refresh_lookup (tenant_id, user_id, session_id)
+          KEY idx_refresh_lookup (tenant_id, user_id, session_id),
+          KEY idx_refresh_expires (expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
+
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS task_queue_status (
@@ -64,6 +68,7 @@ def upgrade() -> None:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
+
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS audit_events (
@@ -80,8 +85,44 @@ def upgrade() -> None:
         """
     )
 
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback_records (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          tenant_id VARCHAR(64) NOT NULL,
+          user_id VARCHAR(64) NOT NULL,
+          trace_id VARCHAR(64) NOT NULL,
+          is_correct TINYINT(1) NOT NULL,
+          score DECIMAL(5,4) NOT NULL,
+          user_edit TEXT NULL,
+          tags_json JSON NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          KEY idx_feedback_trace (trace_id),
+          KEY idx_feedback_tenant_time (tenant_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_chunks (
+          id BIGINT PRIMARY KEY AUTO_INCREMENT,
+          tenant_id VARCHAR(64) NOT NULL,
+          source_id VARCHAR(128) NOT NULL,
+          chunk_id VARCHAR(64) NOT NULL,
+          content MEDIUMTEXT NOT NULL,
+          metadata_json JSON NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_chunk (tenant_id, source_id, chunk_id),
+          KEY idx_chunk_source (tenant_id, source_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def downgrade() -> None:
+    op.execute("DROP TABLE IF EXISTS knowledge_chunks")
+    op.execute("DROP TABLE IF EXISTS feedback_records")
     op.execute("DROP TABLE IF EXISTS audit_events")
     op.execute("DROP TABLE IF EXISTS task_queue_status")
     op.execute("DROP TABLE IF EXISTS refresh_tokens")

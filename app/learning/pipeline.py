@@ -1,25 +1,38 @@
 from __future__ import annotations
 
-"""企业学习管线：收集反馈并输出基础统计，供离线优化使用。"""
+"""Enterprise feedback pipeline with optional durable repository backing."""
 
 from collections import defaultdict
 
 from app.schemas.api import FeedbackRequest
+from app.storage.repositories.feedback_repo import FeedbackRepository
 
 
 class EnterpriseLearningPipeline:
-    def __init__(self) -> None:
+    def __init__(self, repository: FeedbackRepository | None = None) -> None:
+        self._repository = repository
         self._feedback_buffer: list[FeedbackRequest] = []
         self._stats: dict[str, float] = defaultdict(float)
+        self._last_tenant_id: str | None = None
 
     def submit_feedback(self, item: FeedbackRequest) -> None:
-        """写入反馈缓冲区。"""
+        self._last_tenant_id = item.tenant_id
+        if self._repository is not None:
+            self._repository.record(item)
+            return
         self._feedback_buffer.append(item)
 
     def process_batch(self) -> dict[str, float]:
-        """处理当前批次反馈并更新统计指标。"""
+        if self._repository is not None:
+            stats = self._repository.stats(self._last_tenant_id)
+            return {
+                "feedback.total": float(stats.total),
+                "feedback.correct_ratio": float(stats.correct_ratio),
+            }
+
         if not self._feedback_buffer:
             return dict(self._stats)
+
         total = len(self._feedback_buffer)
         correct = sum(1 for x in self._feedback_buffer if x.is_correct)
         self._stats["feedback.total"] += total

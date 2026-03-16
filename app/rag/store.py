@@ -1,22 +1,26 @@
 from __future__ import annotations
 
-"""知识分块存储（内存版）。
-
-生产环境可替换为 Milvus + 外部关键词索引。
-"""
+"""Knowledge store with optional durable repository backing."""
 
 from app.schemas.specs import KnowledgeChunk
+from app.storage.repositories.knowledge_repo import KnowledgeRepository
 
 
-class InMemoryKnowledgeStore:
-    def __init__(self) -> None:
+class KnowledgeStore:
+    def __init__(self, repository: KnowledgeRepository | None = None) -> None:
+        self._repository = repository
         self._chunks: list[KnowledgeChunk] = []
 
     def add_chunks(self, chunks: list[KnowledgeChunk]) -> None:
+        if self._repository is not None:
+            self._repository.add_chunks(chunks)
+            return
         self._chunks.extend(chunks)
 
     def search(self, tenant_id: str, query: str, limit: int = 5) -> list[KnowledgeChunk]:
-        # tenant 级过滤，保证多租户数据隔离。
+        if self._repository is not None:
+            return self._repository.search(tenant_id=tenant_id, query=query, limit=limit)
+
         normalized = query.lower().strip()
         candidates = [c for c in self._chunks if c.tenant_id == tenant_id]
         if not normalized:
@@ -29,3 +33,8 @@ class InMemoryKnowledgeStore:
                 scored.append((score, chunk))
         scored.sort(key=lambda x: x[0], reverse=True)
         return [c for _, c in scored[:limit]]
+
+
+class InMemoryKnowledgeStore(KnowledgeStore):
+    def __init__(self) -> None:
+        super().__init__(repository=None)

@@ -1,5 +1,5 @@
--- 企业级智能体平台 MySQL Schema（一期增强版）
--- 适配 MySQL 8.0+
+-- Enterprise Agent Platform MySQL schema (phase 2)
+-- MySQL 8.0+
 
 CREATE TABLE IF NOT EXISTS user_credentials (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

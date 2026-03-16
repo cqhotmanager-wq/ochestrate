@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.storage.models import RefreshTokenORM, UserCredentialORM
 
 
 @dataclass
@@ -21,54 +23,16 @@ class UserRecord:
 
 
 class AuthRepository:
-    def __init__(self, mysql_engine: Engine | None) -> None:
-        self._engine = mysql_engine
+    def __init__(self, session_factory: sessionmaker[Session] | None) -> None:
+        self._session_factory = session_factory
         self._users_mem: dict[tuple[str, str], UserRecord] = {}
         self._refresh_mem: dict[str, dict[str, Any]] = {}
-        if self._engine is not None:
-            self._init_tables()
-
-    def _init_tables(self) -> None:
-        ddl = [
-            """
-            CREATE TABLE IF NOT EXISTS user_credentials (
-              id BIGINT PRIMARY KEY AUTO_INCREMENT,
-              tenant_id VARCHAR(64) NOT NULL,
-              user_id VARCHAR(64) NOT NULL,
-              username VARCHAR(128) NOT NULL,
-              password_hash TEXT NOT NULL,
-              role VARCHAR(32) NOT NULL DEFAULT 'employee',
-              status VARCHAR(32) NOT NULL DEFAULT 'active',
-              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              UNIQUE KEY uk_user_credentials (tenant_id, username),
-              UNIQUE KEY uk_user_credentials_user_id (tenant_id, user_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS refresh_tokens (
-              id BIGINT PRIMARY KEY AUTO_INCREMENT,
-              token_id VARCHAR(64) NOT NULL UNIQUE,
-              tenant_id VARCHAR(64) NOT NULL,
-              user_id VARCHAR(64) NOT NULL,
-              session_id VARCHAR(64) NOT NULL,
-              refresh_token_hash TEXT NOT NULL,
-              expires_at DATETIME NOT NULL,
-              revoked TINYINT(1) NOT NULL DEFAULT 0,
-              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              KEY idx_refresh_lookup (tenant_id, user_id, session_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """,
-        ]
-        with self._engine.begin() as conn:
-            for sql in ddl:
-                conn.execute(text(sql))
 
     def is_empty(self) -> bool:
-        if self._engine is None:
+        if self._session_factory is None:
             return len(self._users_mem) == 0
-        with self._engine.connect() as conn:
-            count = int(conn.execute(text("SELECT COUNT(1) AS c FROM user_credentials")).scalar_one())
+        with self._session_factory() as session:
+            count = session.query(UserCredentialORM.id).count()
         return count == 0
 
     def create_user(
@@ -90,123 +54,63 @@ class AuthRepository:
             password_hash=password_hash,
             created_at=created_at,
         )
-        if self._engine is None:
+        if self._session_factory is None:
             self._users_mem[(tenant_id, username)] = record
             return record
-        with self._engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    INSERT INTO user_credentials(tenant_id, user_id, username, password_hash, role, status)
-                    VALUES (:tenant_id, :user_id, :username, :password_hash, :role, :status)
-                    """
-                ),
-                {
-                    "tenant_id": tenant_id,
-                    "user_id": user_id,
-                    "username": username,
-                    "password_hash": password_hash,
-                    "role": role,
-                    "status": status,
-                },
+
+        with self._session_factory() as session:
+            row = UserCredentialORM(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                username=username,
+                password_hash=password_hash,
+                role=role,
+                status=status,
             )
-        return record
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return self._as_user_record(row)
 
     def get_user_by_username(self, tenant_id: str, username: str) -> UserRecord | None:
-        if self._engine is None:
+        if self._session_factory is None:
             return self._users_mem.get((tenant_id, username))
-        with self._engine.connect() as conn:
-            row = conn.execute(
-                text(
-                    """
-                    SELECT tenant_id, user_id, username, role, status, password_hash, created_at
-                    FROM user_credentials
-                    WHERE tenant_id=:tenant_id AND username=:username
-                    LIMIT 1
-                    """
-                ),
-                {"tenant_id": tenant_id, "username": username},
-            ).mappings().first()
-        if row is None:
-            return None
-        created = row["created_at"]
-        if isinstance(created, str):
-            created = datetime.fromisoformat(created)
-        return UserRecord(
-            tenant_id=row["tenant_id"],
-            user_id=row["user_id"],
-            username=row["username"],
-            role=row["role"],
-            status=row["status"],
-            password_hash=row["password_hash"],
-            created_at=created,
-        )
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(UserCredentialORM).where(
+                    UserCredentialORM.tenant_id == tenant_id,
+                    UserCredentialORM.username == username,
+                )
+            )
+            return None if row is None else self._as_user_record(row)
 
     def get_user_by_id(self, tenant_id: str, user_id: str) -> UserRecord | None:
-        if self._engine is None:
+        if self._session_factory is None:
             for rec in self._users_mem.values():
                 if rec.tenant_id == tenant_id and rec.user_id == user_id:
                     return rec
             return None
-        with self._engine.connect() as conn:
-            row = conn.execute(
-                text(
-                    """
-                    SELECT tenant_id, user_id, username, role, status, password_hash, created_at
-                    FROM user_credentials
-                    WHERE tenant_id=:tenant_id AND user_id=:user_id
-                    LIMIT 1
-                    """
-                ),
-                {"tenant_id": tenant_id, "user_id": user_id},
-            ).mappings().first()
-        if row is None:
-            return None
-        created = row["created_at"]
-        if isinstance(created, str):
-            created = datetime.fromisoformat(created)
-        return UserRecord(
-            tenant_id=row["tenant_id"],
-            user_id=row["user_id"],
-            username=row["username"],
-            role=row["role"],
-            status=row["status"],
-            password_hash=row["password_hash"],
-            created_at=created,
-        )
-
-    def list_users(self, tenant_id: str) -> list[UserRecord]:
-        if self._engine is None:
-            return [r for r in self._users_mem.values() if r.tenant_id == tenant_id]
-        with self._engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    """
-                    SELECT tenant_id, user_id, username, role, status, password_hash, created_at
-                    FROM user_credentials
-                    WHERE tenant_id=:tenant_id
-                    ORDER BY created_at DESC
-                    """
-                ),
-                {"tenant_id": tenant_id},
-            ).mappings().all()
-        result: list[UserRecord] = []
-        for row in rows:
-            created = row["created_at"]
-            if isinstance(created, str):
-                created = datetime.fromisoformat(created)
-            result.append(
-                UserRecord(
-                    tenant_id=row["tenant_id"],
-                    user_id=row["user_id"],
-                    username=row["username"],
-                    role=row["role"],
-                    status=row["status"],
-                    password_hash=row["password_hash"],
-                    created_at=created,
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(UserCredentialORM).where(
+                    UserCredentialORM.tenant_id == tenant_id,
+                    UserCredentialORM.user_id == user_id,
                 )
             )
-        return result
+            return None if row is None else self._as_user_record(row)
+
+    def list_users(self, tenant_id: str) -> list[UserRecord]:
+        if self._session_factory is None:
+            return [r for r in self._users_mem.values() if r.tenant_id == tenant_id]
+
+        with self._session_factory() as session:
+            rows = (
+                session.query(UserCredentialORM)
+                .filter(UserCredentialORM.tenant_id == tenant_id)
+                .order_by(UserCredentialORM.created_at.desc())
+                .all()
+            )
+        return [self._as_user_record(row) for row in rows]
 
     def update_user(
         self,
@@ -222,7 +126,8 @@ class AuthRepository:
         next_role = role or current.role
         next_status = status or current.status
         next_hash = password_hash or current.password_hash
-        if self._engine is None:
+
+        if self._session_factory is None:
             for key, rec in list(self._users_mem.items()):
                 if rec.tenant_id == tenant_id and rec.user_id == user_id:
                     self._users_mem[key] = UserRecord(
@@ -236,24 +141,22 @@ class AuthRepository:
                     )
                     return self._users_mem[key]
             return None
-        with self._engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    UPDATE user_credentials
-                    SET role=:role, status=:status, password_hash=:password_hash
-                    WHERE tenant_id=:tenant_id AND user_id=:user_id
-                    """
-                ),
-                {
-                    "tenant_id": tenant_id,
-                    "user_id": user_id,
-                    "role": next_role,
-                    "status": next_status,
-                    "password_hash": next_hash,
-                },
+
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(UserCredentialORM).where(
+                    UserCredentialORM.tenant_id == tenant_id,
+                    UserCredentialORM.user_id == user_id,
+                )
             )
-        return self.get_user_by_id(tenant_id, user_id)
+            if row is None:
+                return None
+            row.role = next_role
+            row.status = next_status
+            row.password_hash = next_hash
+            session.commit()
+            session.refresh(row)
+            return self._as_user_record(row)
 
     def store_refresh_token(
         self,
@@ -264,8 +167,9 @@ class AuthRepository:
         refresh_token_hash: str,
         expires_at: datetime,
     ) -> None:
-        if self._engine is None:
+        if self._session_factory is None:
             self._refresh_mem[token_id] = {
+                "token_id": token_id,
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "session_id": session_id,
@@ -274,80 +178,70 @@ class AuthRepository:
                 "revoked": False,
             }
             return
-        with self._engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    INSERT INTO refresh_tokens(token_id, tenant_id, user_id, session_id, refresh_token_hash, expires_at, revoked)
-                    VALUES (:token_id, :tenant_id, :user_id, :session_id, :refresh_token_hash, :expires_at, 0)
-                    """
-                ),
-                {
-                    "token_id": token_id,
-                    "tenant_id": tenant_id,
-                    "user_id": user_id,
-                    "session_id": session_id,
-                    "refresh_token_hash": refresh_token_hash,
-                    "expires_at": expires_at.replace(tzinfo=None),
-                },
+
+        with self._session_factory() as session:
+            session.add(
+                RefreshTokenORM(
+                    token_id=token_id,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    session_id=session_id,
+                    refresh_token_hash=refresh_token_hash,
+                    expires_at=expires_at.replace(tzinfo=None),
+                    revoked=False,
+                )
             )
+            session.commit()
 
     def get_refresh_token(self, token_id: str) -> dict[str, Any] | None:
-        if self._engine is None:
+        if self._session_factory is None:
             return self._refresh_mem.get(token_id)
-        with self._engine.connect() as conn:
-            row = conn.execute(
-                text(
-                    """
-                    SELECT token_id, tenant_id, user_id, session_id, refresh_token_hash, expires_at, revoked
-                    FROM refresh_tokens
-                    WHERE token_id=:token_id
-                    LIMIT 1
-                    """
-                ),
-                {"token_id": token_id},
-            ).mappings().first()
-        if row is None:
-            return None
-        expires = row["expires_at"]
-        if isinstance(expires, str):
-            expires = datetime.fromisoformat(expires)
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        return {
-            "token_id": row["token_id"],
-            "tenant_id": row["tenant_id"],
-            "user_id": row["user_id"],
-            "session_id": row["session_id"],
-            "refresh_token_hash": row["refresh_token_hash"],
-            "expires_at": expires,
-            "revoked": bool(row["revoked"]),
-        }
+
+        with self._session_factory() as session:
+            row = session.scalar(select(RefreshTokenORM).where(RefreshTokenORM.token_id == token_id))
+            if row is None:
+                return None
+            expires = row.expires_at
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            return {
+                "token_id": row.token_id,
+                "tenant_id": row.tenant_id,
+                "user_id": row.user_id,
+                "session_id": row.session_id,
+                "refresh_token_hash": row.refresh_token_hash,
+                "expires_at": expires,
+                "revoked": bool(row.revoked),
+            }
 
     def revoke_refresh_token(self, token_id: str) -> None:
-        if self._engine is None:
+        if self._session_factory is None:
             if token_id in self._refresh_mem:
                 self._refresh_mem[token_id]["revoked"] = True
             return
-        with self._engine.begin() as conn:
-            conn.execute(
-                text("UPDATE refresh_tokens SET revoked=1 WHERE token_id=:token_id"),
-                {"token_id": token_id},
-            )
+
+        with self._session_factory() as session:
+            row = session.scalar(select(RefreshTokenORM).where(RefreshTokenORM.token_id == token_id))
+            if row is not None:
+                row.revoked = True
+                session.commit()
 
     def cleanup_expired_refresh_tokens(self) -> None:
         now = datetime.now(timezone.utc)
-        if self._engine is None:
+        if self._session_factory is None:
             for token_id in list(self._refresh_mem.keys()):
                 item = self._refresh_mem[token_id]
                 if item["expires_at"] <= now:
                     del self._refresh_mem[token_id]
             return
-        with self._engine.begin() as conn:
-            conn.execute(
-                text("DELETE FROM refresh_tokens WHERE expires_at <= :now"),
-                {"now": now.replace(tzinfo=None)},
+
+        with self._session_factory() as session:
+            (
+                session.query(RefreshTokenORM)
+                .filter(RefreshTokenORM.expires_at <= now.replace(tzinfo=None))
+                .delete(synchronize_session=False)
             )
+            session.commit()
 
     def create_bootstrap_admin_if_needed(self, tenant_id: str, username: str, password_hash: str) -> UserRecord:
         existing = self.get_user_by_username(tenant_id, username)
@@ -371,3 +265,17 @@ class AuthRepository:
     def refresh_token_expiry(days: int) -> datetime:
         return datetime.now(timezone.utc) + timedelta(days=days)
 
+    @staticmethod
+    def _as_user_record(row: UserCredentialORM) -> UserRecord:
+        created = row.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return UserRecord(
+            tenant_id=row.tenant_id,
+            user_id=row.user_id,
+            username=row.username,
+            role=row.role,
+            status=row.status,
+            password_hash=row.password_hash,
+            created_at=created,
+        )
