@@ -103,6 +103,7 @@ curl -X POST http://127.0.0.1:8000/v1/auth/login `
 - `POST /v1/agent/run`
 - `POST /v1/tasks/submit`
 - `GET /v1/tasks/{task_id}`
+- `GET /v1/tasks/{task_id}/events` (SSE, pushes status updates and final result)
 - `POST /v1/feedback`
 - `POST /v1/knowledge/ingest-text`
 - `POST /v1/skills`

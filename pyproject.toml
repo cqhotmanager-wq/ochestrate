@@ -22,7 +22,7 @@ dependencies = [
   "opentelemetry-api>=1.26.0",
   "opentelemetry-sdk>=1.26.0",
   "opentelemetry-instrumentation-fastapi>=0.47b0",
-  "langchain==1.2.1",
+  "langchain==1.2.12",
   "langgraph==1.1.2",
   "llama-index-core>=0.10.64",
   "llama-index-readers-file>=0.1.33",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from app.orchestration.service import OrchestratorService
@@ -23,6 +24,8 @@ class TaskEnvelope:
 
 
 class TaskManager:
+    _TERMINAL_STATUSES = {"completed", "failed"}
+
     def __init__(
         self,
         orchestrator: OrchestratorService,
@@ -37,6 +40,8 @@ class TaskManager:
         self._tasks: dict[str, TaskEnvelope] = {}
         self._worker_task: asyncio.Task[None] | None = None
         self._stopped = False
+        self._subscribers: dict[str, set[asyncio.Queue[TaskStatusResponse]]] = {}
+        self._subscribers_lock = asyncio.Lock()
 
     async def start(self) -> None:
         if self._worker_task is None:
@@ -71,6 +76,7 @@ class TaskManager:
             )
         )
         await self._queue_backend.enqueue(task_id)
+        await self._publish_status(task_id)
         return task_id
 
     def get_status(self, task_id: str) -> TaskStatusResponse:
@@ -98,6 +104,38 @@ class TaskManager:
             error=persistent.error_message,
         )
 
+    async def subscribe_status(self, task_id: str) -> AsyncIterator[TaskStatusResponse]:
+        queue: asyncio.Queue[TaskStatusResponse] = asyncio.Queue()
+        async with self._subscribers_lock:
+            self._subscribers.setdefault(task_id, set()).add(queue)
+            await queue.put(self.get_status(task_id))
+
+        try:
+            while True:
+                current = await queue.get()
+                yield current
+                if current.status in self._TERMINAL_STATUSES:
+                    break
+        finally:
+            async with self._subscribers_lock:
+                subscribers = self._subscribers.get(task_id)
+                if subscribers is None:
+                    return
+                subscribers.discard(queue)
+                if not subscribers:
+                    self._subscribers.pop(task_id, None)
+
+    async def _publish_status(self, task_id: str) -> None:
+        async with self._subscribers_lock:
+            subscribers = tuple(self._subscribers.get(task_id, ()))
+
+        if not subscribers:
+            return
+
+        snapshot = self.get_status(task_id)
+        for queue in subscribers:
+            await queue.put(snapshot)
+
     async def _worker_loop(self) -> None:
         while not self._stopped:
             try:
@@ -115,6 +153,7 @@ class TaskManager:
                 continue
             envelope.status = "running"
             self._task_repo.update_status(task_id=task_id, status="running")
+            await self._publish_status(task_id)
             try:
                 envelope.result = self._orchestrator.run(envelope.request)
                 envelope.status = "completed"
@@ -124,6 +163,7 @@ class TaskManager:
                     trace_id=envelope.result.trace_id,
                     result_json=envelope.result.model_dump(),
                 )
+                await self._publish_status(task_id)
             except Exception as exc:
                 logger.exception("task execution failed")
                 envelope.status = "failed"
@@ -133,6 +173,7 @@ class TaskManager:
                     status="failed",
                     error_message=str(exc),
                 )
+                await self._publish_status(task_id)
 
     async def _recover_pending_tasks(self) -> None:
         for record in self._task_repo.list_recoverable_tasks():
