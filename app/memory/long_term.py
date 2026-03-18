@@ -1,7 +1,6 @@
+﻿"""长期记忆存储：按租户用户保存带 TTL 的记忆记录。"""
+
 from __future__ import annotations
-
-"""长期记忆：带 TTL 的用户记忆存储。"""
-
 from datetime import datetime, timedelta, timezone
 
 from app.schemas.specs import MemoryRecord
@@ -47,3 +46,5 @@ class LongTermMemoryStore:
             and (normalized in r.content.lower() or not normalized)
         ]
         return valid[:limit]
+
+

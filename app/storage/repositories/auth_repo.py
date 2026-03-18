@@ -1,3 +1,5 @@
+﻿"""认证仓储：封装用户与 Refresh Token 的持久化访问。"""
+
 from __future__ import annotations
 
 import uuid
@@ -279,3 +281,5 @@ class AuthRepository:
             password_hash=row.password_hash,
             created_at=created,
         )
+
+

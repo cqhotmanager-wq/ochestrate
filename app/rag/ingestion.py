@@ -1,7 +1,6 @@
+﻿"""知识摄取：将原始文本切分为可检索知识分块。"""
+
 from __future__ import annotations
-
-"""知识摄取管线：将原始文本切分为可检索分块。"""
-
 import hashlib
 
 from app.schemas.specs import KnowledgeChunk
@@ -40,3 +39,5 @@ class IngestionPipeline:
                 )
             )
         return chunks
+
+

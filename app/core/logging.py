@@ -1,3 +1,5 @@
+﻿"""日志配置：初始化全局日志格式、级别与输出行为。"""
+
 from __future__ import annotations
 
 import logging
@@ -21,4 +23,6 @@ def configure_logging() -> None:
         formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     handler.setFormatter(formatter)
     root.addHandler(handler)
+
+
 

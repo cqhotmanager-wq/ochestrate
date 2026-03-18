@@ -1,3 +1,5 @@
+﻿"""领域规格模型：定义技能、路由规则、记忆与知识结构。"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -50,4 +52,6 @@ class KnowledgeChunk(BaseModel):
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
     embedding: list[float] | None = None
+
+
 

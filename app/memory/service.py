@@ -1,7 +1,6 @@
+﻿"""记忆服务门面：统一封装短期与长期记忆读写接口。"""
+
 from __future__ import annotations
-
-"""记忆服务：统一对外提供短期/长期记忆读写接口。"""
-
 from app.memory.long_term import LongTermMemoryStore
 from app.memory.short_term import ShortTermMemoryStore
 from app.schemas.api import MemoryUpdate
@@ -39,3 +38,5 @@ class MemoryService:
 
     def read_long(self, tenant_id: str, user_id: str, query: str, limit: int = 5) -> list[str]:
         return [r.content for r in self._long.search(tenant_id=tenant_id, user_id=user_id, query=query, limit=limit)]
+
+

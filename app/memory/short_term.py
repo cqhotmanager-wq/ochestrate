@@ -1,7 +1,6 @@
+﻿"""短期记忆存储：按会话保留固定窗口的最近对话。"""
+
 from __future__ import annotations
-
-"""短期记忆：按会话维护滚动窗口。"""
-
 from collections import defaultdict, deque
 
 
@@ -16,3 +15,5 @@ class ShortTermMemoryStore:
 
     def window(self, session_key: str) -> list[str]:
         return list(self._sessions.get(session_key, []))
+
+

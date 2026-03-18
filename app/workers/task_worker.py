@@ -1,3 +1,5 @@
+﻿"""任务管理器：处理任务提交、消费执行、状态发布与恢复。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TaskEnvelope:
+    """任务内存快照：保存任务请求、执行状态与结果。"""
+
     task_id: str
     request: UnifiedRequest
     status: str = "queued"
@@ -24,6 +28,15 @@ class TaskEnvelope:
 
 
 class TaskManager:
+    """异步任务管理器。
+
+    主要职责：
+    - 接收任务并入队
+    - 后台消费队列并调用编排服务
+    - 持久化任务状态，支持服务重启恢复
+    - 向 SSE 订阅方推送任务状态变化
+    """
+
     _TERMINAL_STATUSES = {"completed", "failed"}
 
     def __init__(
@@ -44,12 +57,14 @@ class TaskManager:
         self._subscribers_lock = asyncio.Lock()
 
     async def start(self) -> None:
+        """启动后台消费循环，并优先恢复未完成任务。"""
         if self._worker_task is None:
             self._stopped = False
             await self._recover_pending_tasks()
             self._worker_task = asyncio.create_task(self._worker_loop())
 
     async def stop(self) -> None:
+        """停止后台消费循环。"""
         self._stopped = True
         if self._worker_task:
             self._worker_task.cancel()
@@ -60,10 +75,12 @@ class TaskManager:
             self._worker_task = None
 
     async def submit(self, request: UnifiedRequest) -> str:
+        """提交任务：写入内存、持久化状态并投递队列。"""
         task_id = str(uuid.uuid4())
         envelope = TaskEnvelope(task_id=task_id, request=request)
         self._tasks[task_id] = envelope
 
+        # 先持久化初始状态，确保进程异常退出后仍可恢复任务。
         self._task_repo.create(
             TaskRecord(
                 task_id=task_id,
@@ -80,6 +97,7 @@ class TaskManager:
         return task_id
 
     def get_status(self, task_id: str) -> TaskStatusResponse:
+        """查询任务状态：优先读取内存，再回落到持久化仓储。"""
         task = self._tasks.get(task_id)
         if task is not None:
             trace_id = task.result.trace_id if task.result else None
@@ -105,9 +123,11 @@ class TaskManager:
         )
 
     async def subscribe_status(self, task_id: str) -> AsyncIterator[TaskStatusResponse]:
+        """订阅任务状态流，供 SSE 接口逐步推送。"""
         queue: asyncio.Queue[TaskStatusResponse] = asyncio.Queue()
         async with self._subscribers_lock:
             self._subscribers.setdefault(task_id, set()).add(queue)
+            # 订阅建立后先推送一次当前快照，避免客户端“先等待再首包”的空窗。
             await queue.put(self.get_status(task_id))
 
         try:
@@ -126,6 +146,7 @@ class TaskManager:
                     self._subscribers.pop(task_id, None)
 
     async def _publish_status(self, task_id: str) -> None:
+        """向所有订阅者广播任务状态快照。"""
         async with self._subscribers_lock:
             subscribers = tuple(self._subscribers.get(task_id, ()))
 
@@ -137,6 +158,7 @@ class TaskManager:
             await queue.put(snapshot)
 
     async def _worker_loop(self) -> None:
+        """后台消费循环：拉取任务、执行编排、落状态。"""
         while not self._stopped:
             try:
                 task_id = await self._queue_backend.dequeue(self._poll_interval_seconds)
@@ -145,12 +167,14 @@ class TaskManager:
                 await asyncio.sleep(self._poll_interval_seconds)
                 continue
             if task_id is None:
+                # 当前无任务时短暂休眠，降低空轮询开销。
                 await asyncio.sleep(self._poll_interval_seconds)
                 continue
 
             envelope = self._tasks.get(task_id)
             if envelope is None:
                 continue
+            # 进入运行态后先更新持久化状态，再开始实际执行。
             envelope.status = "running"
             self._task_repo.update_status(task_id=task_id, status="running")
             await self._publish_status(task_id)
@@ -165,6 +189,7 @@ class TaskManager:
                 )
                 await self._publish_status(task_id)
             except Exception as exc:
+                # 失败路径必须记录错误文本，并同步推送给订阅端。
                 logger.exception("task execution failed")
                 envelope.status = "failed"
                 envelope.error = str(exc)
@@ -176,6 +201,7 @@ class TaskManager:
                 await self._publish_status(task_id)
 
     async def _recover_pending_tasks(self) -> None:
+        """启动时恢复 `queued/running` 任务，重新入队执行。"""
         for record in self._task_repo.list_recoverable_tasks():
             if not record.request_json:
                 continue
@@ -193,3 +219,5 @@ class TaskManager:
                 await self._queue_backend.enqueue(record.task_id)
             except Exception:
                 logger.exception("recover task enqueue failed: %s", record.task_id)
+
+

@@ -1,3 +1,5 @@
+﻿"""Lang 运行时兼容层：统一获取 LangChain/LangGraph 类型。"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -17,4 +19,6 @@ def get_langgraph_types() -> tuple[Any, Any]:
     except Exception:
         return "__end__", None
     return END, StateGraph
+
+
 

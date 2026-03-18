@@ -1,3 +1,5 @@
+﻿"""应用入口：初始化 FastAPI、注册中间件与路由，并管理任务工作器生命周期。"""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -25,6 +27,7 @@ configure_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """应用生命周期管理：启动时拉起任务工作器，退出时优雅停止。"""
     container = get_container()
     await container.task_manager.start()
     try:
@@ -40,10 +43,14 @@ app.include_router(v1_router, prefix="/v1")
 
 @app.get("/health")
 def health() -> dict[str, object]:
+    """健康检查接口：返回存活状态与当前指标快照。"""
     container = get_container()
     return {"status": "ok", "metrics": container.metrics.snapshot()}
 
 
 @app.get("/metrics", response_class=PlainTextResponse)
 def metrics() -> PlainTextResponse:
+    """指标接口：优先输出 Prometheus 指标，缺失依赖时输出内部计数。"""
     return PlainTextResponse(generate_latest().decode("utf-8"), media_type=CONTENT_TYPE_LATEST)
+
+

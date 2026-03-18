@@ -1,7 +1,6 @@
+﻿"""知识存储门面：支持内存与持久化仓储双模式。"""
+
 from __future__ import annotations
-
-"""Knowledge store with optional durable repository backing."""
-
 from app.schemas.specs import KnowledgeChunk
 from app.storage.repositories.knowledge_repo import KnowledgeRepository
 
@@ -38,3 +37,6 @@ class KnowledgeStore:
 class InMemoryKnowledgeStore(KnowledgeStore):
     def __init__(self) -> None:
         super().__init__(repository=None)
+
+
+

@@ -1,3 +1,5 @@
+﻿"""网络工具：提供网页抓取与搜索并执行 SSRF 防护。"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,6 +22,7 @@ class WebFetchTool:
         self._security = security
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        """抓取单个 URL 内容并执行安全过滤。"""
         url = str(params.get("url") or "").strip()
         if not url:
             raise ValueError("url is required")
@@ -54,6 +57,7 @@ class WebFetchTool:
         current = url
         with requests.Session() as session:
             for _ in range(self._security.max_redirects + 1):
+                # 禁用 requests 自动跳转，改为逐跳手工校验。
                 resp = session.get(
                     current,
                     timeout=self._security.fetch_timeout_seconds,
@@ -68,6 +72,7 @@ class WebFetchTool:
                     current = next_url
                     continue
 
+                # 落地内容前先校验响应头，避免下载异常大文件或二进制流。
                 self._validate_content_headers(resp)
                 text = resp.text
                 if len(text) > self._security.max_fetch_chars:
@@ -95,6 +100,7 @@ class WebSearchTool:
         self._fetch_tool = fetch_tool
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        """执行关键词搜索，并可选抓取结果页摘要。"""
         query = str(params.get("query") or params.get("q") or "").strip()
         if not query:
             raise ValueError("query is required")
@@ -119,6 +125,7 @@ class WebSearchTool:
             item = {"title": title, "url": href, "snippet": snippet}
             if include_fetch and href and self._security.is_url_safe(href):
                 try:
+                    # 对命中的结果再做二次抓取，返回更长的可读摘要。
                     fetched = self._fetch_tool.run({"url": href})
                     item["fetched_excerpt"] = fetched.get("text", "")
                 except Exception as exc:
@@ -137,3 +144,4 @@ class WebSearchTool:
                 if part.startswith("uddg="):
                     return unquote(part[len("uddg=") :])
         return url
+

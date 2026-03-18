@@ -1,2 +1,4 @@
-"""Context packing, token budgeting, and summarization."""
+﻿"""上下文子系统入口：负责预算估算、摘要压缩与上下文拼装。"""
+
+
 

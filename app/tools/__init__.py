@@ -1,3 +1,5 @@
+﻿"""工具子系统导出：统一暴露工具调用核心数据结构。"""
+
 from app.tools.base import ToolCall, ToolInvokeResult, ToolPayload
 from app.tools.database_tool import DatabaseTool
 from app.tools.file_tool import FileTool
@@ -19,4 +21,6 @@ __all__ = [
     "WebFetchTool",
     "WebSearchTool",
 ]
+
+
 

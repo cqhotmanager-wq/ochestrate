@@ -1,3 +1,5 @@
+﻿"""指标注册器：维护运行时计数指标快照。"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -12,4 +14,6 @@ class MetricsRegistry:
 
     def snapshot(self) -> dict[str, int]:
         return dict(self._counter)
+
+
 

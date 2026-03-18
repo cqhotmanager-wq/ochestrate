@@ -1,3 +1,5 @@
+﻿"""知识摄取接口：把文本切分为知识分块并写入知识库。"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -25,3 +27,5 @@ def ingest_text(
     )
     container.knowledge_store.add_chunks(chunks)
     return {"accepted": True, "chunks": len(chunks)}
+
+

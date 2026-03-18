@@ -1,3 +1,5 @@
+﻿"""编排状态定义：声明流程节点间共享状态字段。"""
+
 from __future__ import annotations
 
 from typing import Any, TypedDict
@@ -16,4 +18,6 @@ class OrchestrationState(TypedDict, total=False):
     answer: str
     confidence: float
     fallback_triggered: bool
+
+
 

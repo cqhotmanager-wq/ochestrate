@@ -1,3 +1,5 @@
+﻿"""队列后端抽象：支持内存队列与 Redis 队列实现。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -9,6 +11,8 @@ except Exception:  # pragma: no cover
 
 
 class QueueBackend:
+    """队列后端抽象接口。"""
+
     async def enqueue(self, item: str) -> None:  # pragma: no cover
         raise NotImplementedError
 
@@ -17,6 +21,8 @@ class QueueBackend:
 
 
 class InMemoryQueueBackend(QueueBackend):
+    """内存队列实现，适用于本地开发与测试环境。"""
+
     def __init__(self) -> None:
         self._queue: asyncio.Queue[str] = asyncio.Queue()
 
@@ -31,6 +37,8 @@ class InMemoryQueueBackend(QueueBackend):
 
 
 class RedisQueueBackend(QueueBackend):
+    """Redis 队列实现，适用于可横向扩展的生产部署。"""
+
     def __init__(self, redis_url: str, queue_name: str) -> None:
         if Redis is None:
             raise RuntimeError("redis package is not available")
@@ -46,4 +54,6 @@ class RedisQueueBackend(QueueBackend):
             return None
         _, value = result
         return value
+
+
 

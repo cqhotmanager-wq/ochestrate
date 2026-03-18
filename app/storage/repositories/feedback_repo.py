@@ -1,3 +1,5 @@
+﻿"""反馈仓储：记录反馈并提供租户维度统计。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -60,3 +62,5 @@ class FeedbackRepository:
                 return FeedbackStats(total=0, correct_ratio=0.0)
             correct_v = int(correct or 0)
             return FeedbackStats(total=total_v, correct_ratio=correct_v / total_v)
+
+

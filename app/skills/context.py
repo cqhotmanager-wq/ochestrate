@@ -1,3 +1,5 @@
+﻿"""技能上下文服务：聚合 SkillCenter 与 SKILL.md 扫描结果。"""
+
 from __future__ import annotations
 
 import re
@@ -109,4 +111,6 @@ class SkillContextService:
             return new_parts > old_parts
         except ValueError:
             return new > old
+
+
 

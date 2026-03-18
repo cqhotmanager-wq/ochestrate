@@ -1,7 +1,6 @@
+﻿"""检索器：把知识分块检索结果转换为引用对象。"""
+
 from __future__ import annotations
-
-"""混合检索器：将知识分块转换为可返回的引用结果。"""
-
 from app.schemas.api import Citation
 from app.rag.store import KnowledgeStore
 
@@ -24,3 +23,5 @@ class HybridRetriever:
                 )
             )
         return citations
+
+

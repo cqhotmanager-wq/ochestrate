@@ -1,3 +1,5 @@
+﻿"""办公自动化工具：封装邮件发送与日程创建能力。"""
+
 from __future__ import annotations
 
 
@@ -24,4 +26,6 @@ class CreateCalendarEventTool:
         title = params.get("title", "Untitled")
         when = params.get("when", "unspecified")
         return {"status": "created", "title": title, "when": when}
+
+
 

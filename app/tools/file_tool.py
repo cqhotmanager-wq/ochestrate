@@ -1,3 +1,5 @@
+﻿"""文件工具：支持多格式文件读写与目录枚举。"""
+
 from __future__ import annotations
 
 import json
@@ -140,4 +142,6 @@ class FileTool:
                 raise RuntimeError("doc conversion finished but output file was not produced")
             doc = Document(str(converted))
             return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+
+
 

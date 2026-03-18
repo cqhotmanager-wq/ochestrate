@@ -1,2 +1,4 @@
-"""Observability components: tracing, metrics, audit."""
+﻿"""可观测性子系统入口：聚合审计、指标和追踪组件。"""
+
+
 

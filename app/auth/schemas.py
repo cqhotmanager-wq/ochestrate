@@ -1,3 +1,5 @@
+﻿"""认证领域模型：定义登录、用户和 Token 上下文结构。"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -55,3 +57,5 @@ class UserResponse(BaseModel):
     role: str
     status: str
     created_at: datetime
+
+

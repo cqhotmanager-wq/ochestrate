@@ -1,2 +1,4 @@
-"""Core configuration and dependency wiring."""
+﻿"""核心基础设施入口：承载配置、依赖容器与日志能力。"""
+
+
 

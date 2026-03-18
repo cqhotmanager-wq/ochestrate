@@ -1,3 +1,5 @@
+﻿"""模式定义导出：统一对外暴露 API 与领域数据结构。"""
+
 from app.schemas.api import (
     Action,
     Citation,
@@ -41,3 +43,5 @@ __all__ = [
     "UnifiedRequest",
     "UnifiedResponse",
 ]
+
+

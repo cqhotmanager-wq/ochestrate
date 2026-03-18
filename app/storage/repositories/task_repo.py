@@ -1,3 +1,5 @@
+﻿"""任务仓储：管理异步任务状态、结果快照与审计落库。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -141,3 +143,5 @@ class TaskRepository:
             result_json=row.result_json,
             error_message=row.error_message,
         )
+
+

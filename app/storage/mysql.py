@@ -1,7 +1,6 @@
+﻿"""MySQL 适配器：负责连接延迟初始化与健康检查。"""
+
 from __future__ import annotations
-
-"""MySQL 适配器：封装连接与健康检查。"""
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -24,3 +23,5 @@ class MySQLAdapter:
             return True
         except Exception:
             return False
+
+

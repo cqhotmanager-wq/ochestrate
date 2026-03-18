@@ -1,2 +1,4 @@
-"""Short-term and long-term memory services."""
+﻿"""记忆子系统入口：提供短期会话记忆与长期记忆能力。"""
+
+
 

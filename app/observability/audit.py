@@ -1,3 +1,5 @@
+﻿"""审计日志器：记录关键事件并可选写入持久化存储。"""
+
 from __future__ import annotations
 
 import json
@@ -30,3 +32,5 @@ class AuditLogger:
                 # File logging remains source of truth when DB sink fails.
                 pass
         return event_id
+
+

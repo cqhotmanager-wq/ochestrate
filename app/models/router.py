@@ -1,7 +1,6 @@
+﻿"""模型路由器：按任务类型与敏感度选择模型并支持回退。"""
+
 from __future__ import annotations
-
-"""模型路由层：基于配置文件按任务类型与敏感等级选择模型提供方。"""
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -91,3 +90,5 @@ class ModelRouter:
                 except Exception:
                     continue
         return prompt, True
+
+

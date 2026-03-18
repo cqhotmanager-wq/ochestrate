@@ -1,3 +1,5 @@
+﻿"""规划智能体：根据任务类型和工具负载生成可执行步骤。"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -67,4 +69,6 @@ class PlannerAgent:
         if resource_type in {"database", "sql"}:
             return {"kind": "tool", "tool_name": "database_tool", "params": params}
         return None
+
+
 

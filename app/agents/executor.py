@@ -1,3 +1,5 @@
+﻿"""执行智能体：按策略调用工具中心并汇总动作结果。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -88,3 +90,5 @@ class ExecutorAgent:
                     )
                 )
         return actions
+
+

@@ -1,3 +1,5 @@
+﻿"""提示词组装器：融合策略、技能、工具、证据与记忆。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -93,4 +95,6 @@ class PromptAssemblyService:
             return self._template.format(**kwargs)
         sections = [f"[{k.upper()}]\n{v}" for k, v in kwargs.items()]
         return "\n\n".join(sections)
+
+
 

@@ -1,3 +1,5 @@
+﻿"""工具安全策略：统一管理路径、域名、协议与数据库写保护。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,6 +13,15 @@ import yaml
 
 @dataclass
 class ToolSecurityConfig:
+    """工具安全配置。
+
+    集中管理：
+    - 文件系统访问白名单
+    - 网络访问域名/协议约束
+    - 私网访问阻断策略
+    - 数据库写入确认与租户范围校验开关
+    """
+
     allowed_directories: list[Path]
     allowed_domains: list[str]
     allowed_schemes: list[str] | None = None
@@ -27,6 +38,7 @@ class ToolSecurityConfig:
 
     @classmethod
     def from_file(cls, path: Path, workspace: Path) -> "ToolSecurityConfig":
+        """从 YAML 读取安全策略，并把相对路径解析到当前工作区。"""
         raw = {}
         if path.exists():
             raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -52,6 +64,7 @@ class ToolSecurityConfig:
         )
 
     def is_path_allowed(self, target: Path) -> bool:
+        """校验目标路径是否在允许目录内（防目录穿越）。"""
         resolved = target.resolve()
         for allowed in self.allowed_directories:
             try:
@@ -62,6 +75,7 @@ class ToolSecurityConfig:
         return False
 
     def is_domain_allowed(self, url: str) -> bool:
+        """校验 URL 协议与域名是否满足白名单规则。"""
         parsed = urlparse(url)
         schemes = [x.lower() for x in (self.allowed_schemes or ["https", "http"])]
         if parsed.scheme.lower() not in schemes:
@@ -90,6 +104,7 @@ class ToolSecurityConfig:
 
     @staticmethod
     def _is_private_host(host: str) -> bool:
+        """判断主机是否解析到私网/环回/保留地址。"""
         try:
             ip = ipaddress.ip_address(host)
             return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast
@@ -110,3 +125,4 @@ class ToolSecurityConfig:
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
                 return True
         return False
+

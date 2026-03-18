@@ -1,3 +1,5 @@
+﻿"""知识仓储：保存知识分块并执行检索排序。"""
+
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -86,3 +88,5 @@ class KnowledgeRepository:
                 scored.append((score, chunk))
         scored.sort(key=lambda item: item[0], reverse=True)
         return [chunk for _, chunk in scored[:limit]]
+
+

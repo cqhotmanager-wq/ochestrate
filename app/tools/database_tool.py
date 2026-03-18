@@ -1,3 +1,5 @@
+﻿"""数据库工具：执行 SQL 查询/写入并附加策略校验。"""
+
 from __future__ import annotations
 
 import re
@@ -21,6 +23,12 @@ class DatabaseTool:
         self._engine: Engine | None = None
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        """执行 SQL 查询或写入。
+
+        安全策略：
+        - 写 SQL 默认需要显式确认字段（如 `confirm_write=true`）；
+        - 可选启用租户范围约束，避免跨租户读写。
+        """
         operation = str(params.get("operation", "query")).lower()
         sql = str(params.get("sql") or "").strip()
         if not sql:
@@ -34,6 +42,7 @@ class DatabaseTool:
                 raise PermissionError(
                     f"write SQL requires explicit '{self._security.db_confirm_field}=true'"
                 )
+        # 在租户隔离模式下，要求 SQL 显式包含租户约束条件。
         if self._security.db_require_tenant_scope:
             self._ensure_tenant_scope(sql=sql, tenant_id=tenant_id, tenant_column=tenant_column)
 
@@ -51,12 +60,14 @@ class DatabaseTool:
         raise ValueError(f"unsupported operation '{operation}'")
 
     def _get_engine(self) -> Engine:
+        """惰性初始化数据库引擎，避免进程启动阶段的过早连接。"""
         if self._engine is None:
             self._engine = create_engine(self._dsn, pool_pre_ping=True)
         return self._engine
 
     @staticmethod
     def _is_write_sql(sql: str) -> bool:
+        """按 SQL 首关键字粗粒度判断是否为写操作。"""
         match = re.match(r"^\s*([a-zA-Z]+)", sql)
         keyword = (match.group(1).upper() if match else "")
         return keyword in {
@@ -87,3 +98,4 @@ class DatabaseTool:
         if f":{column}" in normalized or f"%({column})s" in normalized:
             return
         raise PermissionError(f"tenant scope check failed: missing '{tenant_column}' condition")
+

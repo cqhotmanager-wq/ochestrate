@@ -1,7 +1,6 @@
+﻿"""Token 预算管理：估算文本规模并在超限时截断。"""
+
 from __future__ import annotations
-
-"""Token 预算器：估算并裁剪上下文长度。"""
-
 
 class TokenBudgetManager:
     def __init__(self, max_tokens: int) -> None:
@@ -17,3 +16,5 @@ class TokenBudgetManager:
             return text
         words = text.split()
         return " ".join(words[: max(remaining_tokens, 1)])
+
+

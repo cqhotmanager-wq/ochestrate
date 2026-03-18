@@ -1,3 +1,5 @@
+﻿"""编排服务：组织 Planner/Retriever/Executor/Reviewer 完成任务。"""
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 
 class OrchestratorService:
+    """统一编排服务。
+
+    负责把任务请求串联为完整执行链路：
+    1) 规划步骤
+    2) 检索证据
+    3) 执行动作
+    4) 生成并评审答案
+    """
+
     def __init__(
         self,
         planner: PlannerAgent,
@@ -57,21 +68,25 @@ class OrchestratorService:
         self._graph = self._build_graph()
 
     def _build_graph(self) -> Any:
+        """构建 LangGraph 状态图；若运行时缺少 LangGraph，则返回 `None`。"""
         end_symbol, state_graph_cls = get_langgraph_types()
         if state_graph_cls is None:
             return None
 
         def planner_node(state: dict[str, Any]) -> dict[str, Any]:
+            # 规划节点：把请求转成可执行步骤清单。
             request: UnifiedRequest = state["request"]
             state["planner_steps"] = self._planner.plan(request)
             return state
 
         def retriever_node(state: dict[str, Any]) -> dict[str, Any]:
+            # 检索节点：产出可引用证据，为后续回答提供事实支撑。
             request: UnifiedRequest = state["request"]
             state["citations"] = self._retriever.retrieve(request)
             return state
 
         def executor_node(state: dict[str, Any]) -> dict[str, Any]:
+            # 执行节点：根据规划步骤触发工具调用。
             request: UnifiedRequest = state["request"]
             state["actions"] = self._executor.execute(
                 steps=state.get("planner_steps", []),
@@ -85,6 +100,7 @@ class OrchestratorService:
             return state
 
         def reviewer_node(state: dict[str, Any]) -> dict[str, Any]:
+            # 评审节点：先调用模型生成，再做结果复核并给出置信度。
             request: UnifiedRequest = state["request"]
             prompt = self._compose_prompt(request=request, citations=state.get("citations", []))
             answer, fallback = self._model_router.generate(
@@ -115,6 +131,7 @@ class OrchestratorService:
         return graph.compile()
 
     def run(self, request: UnifiedRequest) -> UnifiedResponse:
+        """执行统一编排流程并返回结构化响应。"""
         tenant_id = request.tenant_id or ""
         user_id = request.user_id or ""
         trace_id = self._trace.new_trace_id()
@@ -130,6 +147,7 @@ class OrchestratorService:
             "fallback_triggered": False,
         }
 
+        # 优先走 LangGraph 流程；运行时缺失依赖时退回串行执行，保证功能可用。
         if self._graph is not None:
             state = self._graph.invoke(state)
         else:
@@ -141,6 +159,7 @@ class OrchestratorService:
         confidence = state.get("confidence", 0.0)
         fallback_triggered = state.get("fallback_triggered", False)
 
+        # 响应写回后，补充短期/长期记忆用于下一次上下文增强。
         short_update = self._memory.write_short(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -154,6 +173,7 @@ class OrchestratorService:
             tags=["auto-summary"],
         )
 
+        # 写审计日志，沉淀链路执行统计信息。
         self._audit.record(
             "orchestration.completed",
             {
@@ -166,6 +186,8 @@ class OrchestratorService:
                 "skills_loaded": len(self._skill_context.load()),
             },
         )
+
+        # 低置信度响应单独计数，便于后续监控和策略优化。
         if confidence < 0.4:
             self._metrics.inc("response.low_confidence")
 
@@ -180,6 +202,7 @@ class OrchestratorService:
         )
 
     def _run_without_graph(self, state: dict[str, Any]) -> dict[str, Any]:
+        """无 LangGraph 依赖时的串行回退执行路径。"""
         request: UnifiedRequest = state["request"]
         planner_steps = self._planner.plan(request)
         citations = self._retriever.retrieve(request)
@@ -212,6 +235,14 @@ class OrchestratorService:
         return state
 
     def _compose_prompt(self, request: UnifiedRequest, citations: list[Any]) -> str:
+        """组装最终模型输入上下文。
+
+        组装顺序：
+        - 记忆（短期/长期）
+        - 检索证据
+        - 工具能力与技能上下文
+        - 任务输入与系统策略
+        """
         tenant_id = request.tenant_id or ""
         user_id = request.user_id or ""
         short_ctx = "\n".join(self._memory.read_short(tenant_id, user_id, request.session_id))
@@ -240,3 +271,5 @@ class OrchestratorService:
             short_memory=short_ctx,
             long_memory=long_ctx,
         )
+
+

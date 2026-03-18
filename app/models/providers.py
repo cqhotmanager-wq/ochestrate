@@ -1,7 +1,6 @@
+﻿"""模型提供方抽象：定义本地与云端模型调用协议。"""
+
 from __future__ import annotations
-
-"""模型 provider 抽象与示例实现。"""
-
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -33,3 +32,5 @@ class CloudModelClient:
 
     def generate(self, prompt: str, config: ModelConfig) -> str:
         return f"[cloud:{config.name}] {prompt[: config.max_tokens]}"
+
+

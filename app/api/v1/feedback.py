@@ -1,3 +1,5 @@
+﻿"""反馈接口：接收人工反馈并驱动学习管线统计更新。"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -17,7 +19,10 @@ def submit_feedback(
     auth: AuthContext = Depends(require_auth_context),
     container: ServiceContainer = Depends(get_container),
 ) -> dict[str, object]:
+    """提交反馈并返回即时统计。"""
     scoped_request = bind_feedback_auth(request, auth)
     container.learning_pipeline.submit_feedback(scoped_request)
     stats = container.learning_pipeline.process_batch()
     return {"accepted": True, "stats": stats}
+
+

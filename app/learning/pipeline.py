@@ -1,7 +1,6 @@
+﻿"""学习管线：记录反馈数据并计算正确率等指标。"""
+
 from __future__ import annotations
-
-"""Enterprise feedback pipeline with optional durable repository backing."""
-
 from collections import defaultdict
 
 from app.schemas.api import FeedbackRequest
@@ -39,3 +38,6 @@ class EnterpriseLearningPipeline:
         self._stats["feedback.correct_ratio"] = correct / total
         self._feedback_buffer.clear()
         return dict(self._stats)
+
+
+

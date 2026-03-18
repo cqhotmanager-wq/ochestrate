@@ -1,7 +1,6 @@
+﻿"""评审智能体：对答案进行复核并给出置信度评估。"""
+
 from __future__ import annotations
-
-"""Reviewer Agent：对答案进行二次校验并输出置信度。"""
-
 from app.schemas.api import Citation
 
 
@@ -23,3 +22,5 @@ class ReviewerAgent:
         if len(answer) < 20:
             base_confidence -= 0.1
         return answer, max(0.0, min(base_confidence, 1.0))
+
+

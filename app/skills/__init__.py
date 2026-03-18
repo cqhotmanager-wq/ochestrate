@@ -1,2 +1,4 @@
-"""Skill generation and dynamic loading."""
+﻿"""技能子系统入口：管理技能生成、存储与上下文加载。"""
+
+
 

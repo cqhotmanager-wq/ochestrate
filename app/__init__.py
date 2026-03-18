@@ -1,2 +1,4 @@
-"""Enterprise Agent Platform application package."""
+﻿"""企业级智能体平台应用包，包含 API、编排、工具、存储与可观测能力。"""
+
+
 

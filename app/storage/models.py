@@ -1,3 +1,5 @@
+﻿"""数据库 ORM 模型：映射认证、任务、审计、反馈、知识表。"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -108,3 +110,5 @@ class KnowledgeChunkORM(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+

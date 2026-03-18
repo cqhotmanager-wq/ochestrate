@@ -1,2 +1,4 @@
-"""Compatibility wrappers for LangChain and LangGraph imports."""
+﻿"""兼容层入口：封装第三方框架的可选依赖导入。"""
+
+
 

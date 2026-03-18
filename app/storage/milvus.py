@@ -1,7 +1,6 @@
+﻿"""Milvus 适配器：负责向量存储连通性检查。"""
+
 from __future__ import annotations
-
-"""Milvus 适配器：封装连接健康检查。"""
-
 try:
     from pymilvus import connections
 except Exception:  # pragma: no cover - optional dependency at runtime
@@ -21,3 +20,5 @@ class MilvusAdapter:
             return True
         except Exception:
             return False
+
+

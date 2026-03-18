@@ -1,3 +1,5 @@
+﻿"""技能接口：创建技能模板并按版本读取技能定义。"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -39,3 +41,5 @@ def get_skill(
         return container.skill_center.load_skill(skill_id=skill_id, version=version)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+

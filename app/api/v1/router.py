@@ -1,3 +1,5 @@
+﻿"""V1 路由聚合器：将各业务路由挂载到统一前缀。"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -20,3 +22,5 @@ router.include_router(feedback_router)
 router.include_router(knowledge_router)
 router.include_router(skills_router)
 router.include_router(webhook_router)
+
+

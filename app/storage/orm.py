@@ -1,3 +1,5 @@
+﻿"""ORM 基础设施：定义 Base 与会话工厂。"""
+
 from __future__ import annotations
 
 from sqlalchemy.engine import Engine
@@ -10,3 +12,5 @@ class Base(DeclarativeBase):
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+
+

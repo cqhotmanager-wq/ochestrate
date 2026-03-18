@@ -1,7 +1,6 @@
+﻿"""上下文管理器：按固定层次拼装提示上下文并控制长度。"""
+
 from __future__ import annotations
-
-"""上下文管理器：控制拼接顺序、Token 预算与压缩策略。"""
-
 from app.context.summarizer import Summarizer
 from app.context.token_budget import TokenBudgetManager
 
@@ -31,3 +30,5 @@ class ContextManager:
         if self._budget.estimate_tokens(composed) <= self._budget.max_tokens:
             return composed
         return self._summarizer.summarize(composed, max_words=self._budget.max_tokens)
+
+

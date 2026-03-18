@@ -1,3 +1,5 @@
+﻿"""认证子系统导出：统一暴露鉴权依赖函数。"""
+
 from app.auth.deps import optional_auth_context, require_auth_context
 from app.auth.schemas import (
     AuthContext,
@@ -20,4 +22,6 @@ __all__ = [
     "optional_auth_context",
     "require_auth_context",
 ]
+
+
 

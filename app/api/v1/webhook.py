@@ -1,3 +1,5 @@
+﻿"""Webhook 接口：记录外部工具回调并沉淀审计事件。"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -27,3 +29,5 @@ def tool_callback(
         },
     )
     return {"status": "ok"}
+
+

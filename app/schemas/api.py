@@ -1,3 +1,5 @@
+﻿"""API 模式：定义统一请求/响应、动作、任务与反馈结构。"""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -103,3 +105,4 @@ class CreateSkillRequest(BaseModel):
     name: str
     prompt_template: str
     config: dict[str, Any] = Field(default_factory=dict)
+

@@ -1,3 +1,5 @@
+﻿"""技能中心：处理技能模板持久化、缓存与版本选择。"""
+
 from __future__ import annotations
 
 import json
@@ -77,4 +79,6 @@ class SkillCenter:
             return [int(x) for x in new.split(".")] > [int(x) for x in old.split(".")]
         except ValueError:
             return new > old
+
+
 
