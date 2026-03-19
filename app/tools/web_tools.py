@@ -1,4 +1,4 @@
-﻿"""网络工具：提供网页抓取与搜索并执行 SSRF 防护。"""
+"""网络工具：提供网页抓取与搜索并执行 SSRF 防护。"""
 
 from __future__ import annotations
 
@@ -19,10 +19,12 @@ class WebFetchTool:
     idempotent = True
 
     def __init__(self, security: ToolSecurityConfig) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._security = security
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
         """抓取单个 URL 内容并执行安全过滤。"""
+        # 步骤：执行 `run` 的核心处理逻辑。
         url = str(params.get("url") or "").strip()
         if not url:
             raise ValueError("url is required")
@@ -81,6 +83,7 @@ class WebFetchTool:
         raise ValueError("too many redirects")
 
     def _validate_content_headers(self, response: requests.Response) -> None:
+        # 步骤：执行 `_validate_content_headers` 的核心处理逻辑。
         content_type = (response.headers.get("content-type") or "").lower()
         if not any(x in content_type for x in ("text", "json", "xml", "html", "markdown")):
             raise ValueError(f"unsupported content type '{content_type}'")
@@ -96,6 +99,7 @@ class WebSearchTool:
     idempotent = True
 
     def __init__(self, security: ToolSecurityConfig, fetch_tool: WebFetchTool) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._security = security
         self._fetch_tool = fetch_tool
 
@@ -138,6 +142,7 @@ class WebSearchTool:
 
     @staticmethod
     def _normalize_result_url(url: str) -> str:
+        # 步骤：执行 `_normalize_result_url` 的核心处理逻辑。
         parsed = urlparse(url)
         if "duckduckgo.com" in (parsed.netloc or "") and parsed.path.startswith("/l/"):
             for part in (parsed.query or "").split("&"):

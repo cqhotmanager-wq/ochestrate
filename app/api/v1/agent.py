@@ -1,4 +1,4 @@
-﻿"""智能体同步接口：接收统一请求并触发编排执行。"""
+"""智能体同步接口：接收统一请求并触发编排执行。"""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ def run_agent(
     - 请求体中的租户与用户字段会被鉴权上下文覆盖。
     - 最终返回统一响应结构，包含答案、证据、动作与追踪信息。
     """
+    # 步骤：执行 `run_agent` 的核心处理逻辑。
     scoped_request = bind_unified_request_auth(request, auth)
     return container.orchestrator.run(scoped_request)
 

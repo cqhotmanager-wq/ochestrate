@@ -1,9 +1,10 @@
-﻿"""摘要器：在超预算场景下压缩长文本上下文。"""
+"""摘要器：在超预算场景下压缩长文本上下文。"""
 
 from __future__ import annotations
 
 class Summarizer:
     def summarize(self, text: str, max_words: int = 120) -> str:
+        # 步骤：执行 `summarize` 的核心处理逻辑。
         words = text.split()
         if len(words) <= max_words:
             return text

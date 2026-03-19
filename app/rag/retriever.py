@@ -1,4 +1,4 @@
-﻿"""检索器：把知识分块检索结果转换为引用对象。"""
+"""检索器：把知识分块检索结果转换为引用对象。"""
 
 from __future__ import annotations
 from app.schemas.api import Citation
@@ -7,6 +7,7 @@ from app.rag.store import KnowledgeStore
 
 class HybridRetriever:
     def __init__(self, store: KnowledgeStore) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._store = store
 
     def retrieve(self, tenant_id: str, query: str, limit: int = 5) -> list[Citation]:

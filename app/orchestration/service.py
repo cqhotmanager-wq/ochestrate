@@ -1,4 +1,4 @@
-﻿"""编排服务：组织 Planner/Retriever/Executor/Reviewer 完成任务。"""
+"""编排服务：组织 Planner/Retriever/Executor/Reviewer 完成任务。"""
 
 from __future__ import annotations
 
@@ -51,6 +51,7 @@ class OrchestratorService:
         audit: AuditLogger,
         max_skill_items: int = 100,
     ) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._planner = planner
         self._retriever = retriever
         self._executor = executor
@@ -203,6 +204,7 @@ class OrchestratorService:
 
     def _run_without_graph(self, state: dict[str, Any]) -> dict[str, Any]:
         """无 LangGraph 依赖时的串行回退执行路径。"""
+        # 步骤：执行 `_run_without_graph` 的核心处理逻辑。
         request: UnifiedRequest = state["request"]
         planner_steps = self._planner.plan(request)
         citations = self._retriever.retrieve(request)

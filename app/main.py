@@ -1,4 +1,4 @@
-﻿"""应用入口：初始化 FastAPI、注册中间件与路由，并管理任务工作器生命周期。"""
+"""应用入口：初始化 FastAPI、注册中间件与路由，并管理任务工作器生命周期。"""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
     def generate_latest() -> bytes:
+        # 步骤：执行 `generate_latest` 的核心处理逻辑。
         container = get_container()
         lines = [f"{key} {value}" for key, value in container.metrics.snapshot().items()]
         return ("\n".join(lines) + "\n").encode("utf-8")
@@ -28,6 +29,7 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理：启动时拉起任务工作器，退出时优雅停止。"""
+    # 步骤：执行 `lifespan` 的核心处理逻辑。
     container = get_container()
     await container.task_manager.start()
     try:
@@ -44,6 +46,7 @@ app.include_router(v1_router, prefix="/v1")
 @app.get("/health")
 def health() -> dict[str, object]:
     """健康检查接口：返回存活状态与当前指标快照。"""
+    # 步骤：执行 `health` 的核心处理逻辑。
     container = get_container()
     return {"status": "ok", "metrics": container.metrics.snapshot()}
 
@@ -51,6 +54,7 @@ def health() -> dict[str, object]:
 @app.get("/metrics", response_class=PlainTextResponse)
 def metrics() -> PlainTextResponse:
     """指标接口：优先输出 Prometheus 指标，缺失依赖时输出内部计数。"""
+    # 步骤：执行 `metrics` 的核心处理逻辑。
     return PlainTextResponse(generate_latest().decode("utf-8"), media_type=CONTENT_TYPE_LATEST)
 
 

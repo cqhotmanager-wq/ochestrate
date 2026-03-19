@@ -1,4 +1,4 @@
-﻿"""反馈仓储：记录反馈并提供租户维度统计。"""
+"""反馈仓储：记录反馈并提供租户维度统计。"""
 
 from __future__ import annotations
 
@@ -21,10 +21,12 @@ class FeedbackStats:
 
 class FeedbackRepository:
     def __init__(self, session_factory: sessionmaker[Session] | None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._session_factory = session_factory
         self._mem: list[FeedbackRequest] = []
 
     def record(self, item: FeedbackRequest) -> None:
+        # 步骤：执行 `record` 的核心处理逻辑。
         if self._session_factory is None:
             self._mem.append(item)
             return
@@ -44,6 +46,7 @@ class FeedbackRepository:
             session.commit()
 
     def stats(self, tenant_id: str | None = None) -> FeedbackStats:
+        # 步骤：执行 `stats` 的核心处理逻辑。
         if self._session_factory is None:
             records = [x for x in self._mem if tenant_id is None or x.tenant_id == tenant_id]
             total = len(records)

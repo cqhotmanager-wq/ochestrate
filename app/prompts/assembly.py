@@ -1,4 +1,4 @@
-﻿"""提示词组装器：融合策略、技能、工具、证据与记忆。"""
+"""提示词组装器：融合策略、技能、工具、证据与记忆。"""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ class PromptAssemblyInput:
 
 class PromptAssemblyService:
     def __init__(self, max_tokens: int) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._budget = TokenBudgetManager(max_tokens=max_tokens)
         template_cls = get_prompt_template_cls()
         self._template = (
@@ -42,6 +43,7 @@ class PromptAssemblyService:
         )
 
     def assemble(self, data: PromptAssemblyInput) -> str:
+        # 步骤：执行 `assemble` 的核心处理逻辑。
         skills_text = self._skills_section(data.skills, data.max_skill_items, data.skill_context_mode)
         tools_text = self._tools_section(data.tools)
         rendered = self._render_template(
@@ -64,6 +66,7 @@ class PromptAssemblyService:
         max_skill_items: int,
         skill_context_mode: str,
     ) -> str:
+        # 步骤：执行 `_skills_section` 的核心处理逻辑。
         if not skills:
             return "- none"
 
@@ -80,6 +83,7 @@ class PromptAssemblyService:
 
     @staticmethod
     def _tools_section(tools: list[dict[str, Any]]) -> str:
+        # 步骤：执行 `_tools_section` 的核心处理逻辑。
         if not tools:
             return "- none"
         lines = []
@@ -91,6 +95,7 @@ class PromptAssemblyService:
         return "\n".join(lines)
 
     def _render_template(self, **kwargs: Any) -> str:
+        # 步骤：执行 `_render_template` 的核心处理逻辑。
         if self._template is not None:
             return self._template.format(**kwargs)
         sections = [f"[{k.upper()}]\n{v}" for k, v in kwargs.items()]

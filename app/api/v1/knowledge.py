@@ -1,4 +1,4 @@
-﻿"""知识摄取接口：把文本切分为知识分块并写入知识库。"""
+"""知识摄取接口：把文本切分为知识分块并写入知识库。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ def ingest_text(
     auth: AuthContext = Depends(require_auth_context),
     container: ServiceContainer = Depends(get_container),
 ) -> dict[str, object]:
+    # 步骤：执行 `ingest_text` 的核心处理逻辑。
     scoped_payload = bind_ingest_auth(payload, auth)
     chunks = container.ingestion_pipeline.ingest_text(
         tenant_id=scoped_payload.tenant_id or "",

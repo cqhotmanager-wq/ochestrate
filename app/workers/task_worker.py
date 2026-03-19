@@ -1,4 +1,4 @@
-﻿"""任务管理器：处理任务提交、消费执行、状态发布与恢复。"""
+"""任务管理器：处理任务提交、消费执行、状态发布与恢复。"""
 
 from __future__ import annotations
 
@@ -46,6 +46,7 @@ class TaskManager:
         task_repository: TaskRepository,
         poll_interval_seconds: float = 0.2,
     ) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._orchestrator = orchestrator
         self._queue_backend = queue_backend
         self._task_repo = task_repository
@@ -58,6 +59,7 @@ class TaskManager:
 
     async def start(self) -> None:
         """启动后台消费循环，并优先恢复未完成任务。"""
+        # 步骤：执行 `start` 的核心处理逻辑。
         if self._worker_task is None:
             self._stopped = False
             await self._recover_pending_tasks()
@@ -65,6 +67,7 @@ class TaskManager:
 
     async def stop(self) -> None:
         """停止后台消费循环。"""
+        # 步骤：执行 `stop` 的核心处理逻辑。
         self._stopped = True
         if self._worker_task:
             self._worker_task.cancel()
@@ -147,6 +150,7 @@ class TaskManager:
 
     async def _publish_status(self, task_id: str) -> None:
         """向所有订阅者广播任务状态快照。"""
+        # 步骤：执行 `_publish_status` 的核心处理逻辑。
         async with self._subscribers_lock:
             subscribers = tuple(self._subscribers.get(task_id, ()))
 
@@ -202,6 +206,7 @@ class TaskManager:
 
     async def _recover_pending_tasks(self) -> None:
         """启动时恢复 `queued/running` 任务，重新入队执行。"""
+        # 步骤：执行 `_recover_pending_tasks` 的核心处理逻辑。
         for record in self._task_repo.list_recoverable_tasks():
             if not record.request_json:
                 continue

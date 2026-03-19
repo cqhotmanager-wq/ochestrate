@@ -1,4 +1,4 @@
-﻿"""Webhook 接口：记录外部工具回调并沉淀审计事件。"""
+"""Webhook 接口：记录外部工具回调并沉淀审计事件。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ def tool_callback(
     auth: AuthContext = Depends(require_auth_context),
     container: ServiceContainer = Depends(get_container),
 ) -> dict[str, str]:
+    # 步骤：执行 `tool_callback` 的核心处理逻辑。
     container.audit.record(
         "webhook.tool_callback",
         {

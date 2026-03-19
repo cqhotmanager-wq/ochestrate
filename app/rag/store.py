@@ -1,4 +1,4 @@
-﻿"""知识存储门面：支持内存与持久化仓储双模式。"""
+"""知识存储门面：支持内存与持久化仓储双模式。"""
 
 from __future__ import annotations
 from app.schemas.specs import KnowledgeChunk
@@ -7,16 +7,19 @@ from app.storage.repositories.knowledge_repo import KnowledgeRepository
 
 class KnowledgeStore:
     def __init__(self, repository: KnowledgeRepository | None = None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._repository = repository
         self._chunks: list[KnowledgeChunk] = []
 
     def add_chunks(self, chunks: list[KnowledgeChunk]) -> None:
+        # 步骤：执行 `add_chunks` 的核心处理逻辑。
         if self._repository is not None:
             self._repository.add_chunks(chunks)
             return
         self._chunks.extend(chunks)
 
     def search(self, tenant_id: str, query: str, limit: int = 5) -> list[KnowledgeChunk]:
+        # 步骤：执行 `search` 的核心处理逻辑。
         if self._repository is not None:
             return self._repository.search(tenant_id=tenant_id, query=query, limit=limit)
 
@@ -36,6 +39,7 @@ class KnowledgeStore:
 
 class InMemoryKnowledgeStore(KnowledgeStore):
     def __init__(self) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         super().__init__(repository=None)
 
 

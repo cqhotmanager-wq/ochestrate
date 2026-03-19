@@ -1,4 +1,4 @@
-﻿"""认证接口：提供登录、刷新、退出与管理员初始化能力。"""
+"""认证接口：提供登录、刷新、退出与管理员初始化能力。"""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=LoginResponse)
 def login(payload: LoginRequest, container: ServiceContainer = Depends(get_container)) -> LoginResponse:
     """用户名密码登录，返回 Access/Refresh Token。"""
+    # 步骤：执行 `login` 的核心处理逻辑。
     try:
         return container.auth_service.login(
             tenant_id=payload.tenant_id,
@@ -26,6 +27,7 @@ def login(payload: LoginRequest, container: ServiceContainer = Depends(get_conta
 @router.post("/refresh", response_model=LoginResponse)
 def refresh(payload: RefreshRequest, container: ServiceContainer = Depends(get_container)) -> LoginResponse:
     """使用 Refresh Token 换发新令牌对。"""
+    # 步骤：执行 `refresh` 的核心处理逻辑。
     try:
         return container.auth_service.refresh(payload.refresh_token)
     except PermissionError as exc:
@@ -35,6 +37,7 @@ def refresh(payload: RefreshRequest, container: ServiceContainer = Depends(get_c
 @router.post("/logout")
 def logout(payload: RefreshRequest, container: ServiceContainer = Depends(get_container)) -> dict[str, bool]:
     """登出并吊销 Refresh Token。"""
+    # 步骤：执行 `logout` 的核心处理逻辑。
     container.auth_service.logout(payload.refresh_token)
     return {"success": True}
 
@@ -45,6 +48,7 @@ def bootstrap_admin(
     container: ServiceContainer = Depends(get_container),
 ) -> UserResponse:
     """初始化管理员账号，仅在显式配置开启时允许。"""
+    # 步骤：执行 `bootstrap_admin` 的核心处理逻辑。
     if not container.settings.auth_bootstrap_admin_enabled:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="bootstrap admin is disabled")
     if not payload.tenant_id:

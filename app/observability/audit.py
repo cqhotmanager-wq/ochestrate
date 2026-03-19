@@ -1,4 +1,4 @@
-﻿"""审计日志器：记录关键事件并可选写入持久化存储。"""
+"""审计日志器：记录关键事件并可选写入持久化存储。"""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 
 class AuditLogger:
     def __init__(self, log_path: Path, persistent_sink: Any | None = None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._log_path = log_path
         self._sink = persistent_sink
         self._log_path.parent.mkdir(parents=True, exist_ok=True)

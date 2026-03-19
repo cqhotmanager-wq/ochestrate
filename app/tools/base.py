@@ -1,4 +1,4 @@
-﻿"""工具基础协议：定义工具载荷、调用上下文与返回结果。"""
+"""工具基础协议：定义工具载荷、调用上下文与返回结果。"""
 
 from __future__ import annotations
 
@@ -43,6 +43,7 @@ class Tool(Protocol):
     idempotent: bool
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        # 步骤：执行 `run` 的核心处理逻辑。
         ...
 
 

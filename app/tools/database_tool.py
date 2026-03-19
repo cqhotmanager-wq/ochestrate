@@ -1,4 +1,4 @@
-﻿"""数据库工具：执行 SQL 查询/写入并附加策略校验。"""
+"""数据库工具：执行 SQL 查询/写入并附加策略校验。"""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ class DatabaseTool:
     idempotent = False
 
     def __init__(self, dsn: str, security: ToolSecurityConfig) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._dsn = dsn
         self._security = security
         self._engine: Engine | None = None
@@ -61,6 +62,7 @@ class DatabaseTool:
 
     def _get_engine(self) -> Engine:
         """惰性初始化数据库引擎，避免进程启动阶段的过早连接。"""
+        # 步骤：执行 `_get_engine` 的核心处理逻辑。
         if self._engine is None:
             self._engine = create_engine(self._dsn, pool_pre_ping=True)
         return self._engine
@@ -68,6 +70,7 @@ class DatabaseTool:
     @staticmethod
     def _is_write_sql(sql: str) -> bool:
         """按 SQL 首关键字粗粒度判断是否为写操作。"""
+        # 步骤：执行 `_is_write_sql` 的核心处理逻辑。
         match = re.match(r"^\s*([a-zA-Z]+)", sql)
         keyword = (match.group(1).upper() if match else "")
         return keyword in {
@@ -89,6 +92,7 @@ class DatabaseTool:
         """
         粗粒度租户约束：要求 SQL 中出现 tenant 字段过滤，避免跨租户全表操作。
         """
+        # 步骤：执行 `_ensure_tenant_scope` 的核心处理逻辑。
         if not tenant_id:
             raise PermissionError("tenant scope check failed: tenant_id is required")
         normalized = " ".join(sql.lower().split())

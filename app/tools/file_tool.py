@@ -1,4 +1,4 @@
-﻿"""文件工具：支持多格式文件读写与目录枚举。"""
+"""文件工具：支持多格式文件读写与目录枚举。"""
 
 from __future__ import annotations
 
@@ -23,10 +23,12 @@ class FileTool:
     idempotent = False
 
     def __init__(self, security: ToolSecurityConfig, workspace: Path) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._security = security
         self._workspace = workspace.resolve()
 
     def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        # 步骤：执行 `run` 的核心处理逻辑。
         operation = str(params.get("operation", "read")).lower()
         path_value = str(params.get("resource_path") or params.get("path") or "").strip()
         if not path_value:
@@ -48,6 +50,7 @@ class FileTool:
         raise ValueError(f"unsupported operation '{operation}'")
 
     def _read_file(self, target: Path) -> dict[str, Any]:
+        # 步骤：执行 `_read_file` 的核心处理逻辑。
         self._guard_file_size(target)
         suffix = target.suffix.lower()
         if suffix == ".json":
@@ -78,6 +81,7 @@ class FileTool:
         raise ValueError(f"unsupported file extension '{suffix}'")
 
     def _write_file(self, target: Path, content: Any, options: dict[str, Any]) -> dict[str, Any]:
+        # 步骤：执行 `_write_file` 的核心处理逻辑。
         target.parent.mkdir(parents=True, exist_ok=True)
         suffix = target.suffix.lower()
         if suffix == ".json":
@@ -112,6 +116,7 @@ class FileTool:
         raise ValueError(f"unsupported file extension '{suffix}'")
 
     def _guard_file_size(self, target: Path) -> None:
+        # 步骤：执行 `_guard_file_size` 的核心处理逻辑。
         if not target.exists():
             raise FileNotFoundError(str(target))
         limit = self._security.max_file_size_mb * 1024 * 1024
@@ -119,6 +124,7 @@ class FileTool:
             raise ValueError(f"file exceeds max size limit ({self._security.max_file_size_mb}MB)")
 
     def _read_doc_via_conversion(self, source: Path) -> str:
+        # 步骤：执行 `_read_doc_via_conversion` 的核心处理逻辑。
         with tempfile.TemporaryDirectory() as tmp:
             cmd = [
                 "soffice",

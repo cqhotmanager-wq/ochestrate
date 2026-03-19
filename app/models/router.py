@@ -1,4 +1,4 @@
-﻿"""模型路由器：按任务类型与敏感度选择模型并支持回退。"""
+"""模型路由器：按任务类型与敏感度选择模型并支持回退。"""
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -40,6 +40,7 @@ class ModelRouter:
     @classmethod
     def from_file(cls, config_path: Path) -> "ModelRouter":
         """从 YAML 加载路由规则。"""
+        # 步骤：执行 `from_file` 的核心处理逻辑。
         with config_path.open("r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
         rules = [ModelRouteRule(**r) for r in raw.get("rules", [])]
@@ -58,6 +59,7 @@ class ModelRouter:
         return self._make_routed(self.default_provider)
 
     def _make_routed(self, provider: str) -> RoutedModel:
+        # 步骤：执行 `_make_routed` 的核心处理逻辑。
         cfg = self.provider_configs.get(provider, {})
         model_cfg = ModelConfig(
             name=cfg.get("model", "unknown-model"),

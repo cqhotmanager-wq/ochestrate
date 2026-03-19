@@ -1,4 +1,4 @@
-﻿"""技能上下文服务：聚合 SkillCenter 与 SKILL.md 扫描结果。"""
+"""技能上下文服务：聚合 SkillCenter 与 SKILL.md 扫描结果。"""
 
 from __future__ import annotations
 
@@ -20,11 +20,13 @@ class SkillContextItem:
 
 class SkillContextService:
     def __init__(self, skill_center: SkillCenter, scan_dirs: list[Path], skill_scan_glob: str) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._center = skill_center
         self._scan_dirs = scan_dirs
         self._scan_glob = skill_scan_glob
 
     def load(self) -> list[SkillContextItem]:
+        # 步骤：执行 `load` 的核心处理逻辑。
         from_center = self._load_from_skill_center()
         from_files = self._load_from_skill_md()
         merged: dict[str, SkillContextItem] = {}
@@ -46,6 +48,7 @@ class SkillContextService:
         return sorted(merged.values(), key=lambda x: x.name.lower())
 
     def _load_from_skill_center(self) -> list[SkillContextItem]:
+        # 步骤：执行 `_load_from_skill_center` 的核心处理逻辑。
         items: list[SkillContextItem] = []
         for skill in self._center.list_latest_skills():
             description = (skill.prompt_template or "").strip().replace("\n", " ")
@@ -63,6 +66,7 @@ class SkillContextService:
         return items
 
     def _load_from_skill_md(self) -> list[SkillContextItem]:
+        # 步骤：执行 `_load_from_skill_md` 的核心处理逻辑。
         items: list[SkillContextItem] = []
         for root in self._scan_dirs:
             if not root.exists():
@@ -84,6 +88,7 @@ class SkillContextService:
 
     @staticmethod
     def _extract_name(path: Path, text: str) -> str:
+        # 步骤：执行 `_extract_name` 的核心处理逻辑。
         for line in text.splitlines():
             clean = line.strip()
             if clean.startswith("#"):
@@ -92,6 +97,7 @@ class SkillContextService:
 
     @staticmethod
     def _extract_description(text: str) -> str:
+        # 步骤：执行 `_extract_description` 的核心处理逻辑。
         for line in text.splitlines():
             clean = line.strip()
             if clean and not clean.startswith("#"):
@@ -101,6 +107,7 @@ class SkillContextService:
 
     @staticmethod
     def _version_gt(new: str | None, old: str | None) -> bool:
+        # 步骤：执行 `_version_gt` 的核心处理逻辑。
         if not new:
             return False
         if not old:

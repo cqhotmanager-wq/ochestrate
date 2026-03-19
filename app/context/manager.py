@@ -1,4 +1,4 @@
-﻿"""上下文管理器：按固定层次拼装提示上下文并控制长度。"""
+"""上下文管理器：按固定层次拼装提示上下文并控制长度。"""
 
 from __future__ import annotations
 from app.context.summarizer import Summarizer
@@ -7,6 +7,7 @@ from app.context.token_budget import TokenBudgetManager
 
 class ContextManager:
     def __init__(self, max_tokens: int) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._budget = TokenBudgetManager(max_tokens=max_tokens)
         self._summarizer = Summarizer()
 

@@ -1,4 +1,4 @@
-﻿"""任务仓储：管理异步任务状态、结果快照与审计落库。"""
+"""任务仓储：管理异步任务状态、结果快照与审计落库。"""
 
 from __future__ import annotations
 
@@ -28,10 +28,12 @@ class TaskRecord:
 
 class TaskRepository:
     def __init__(self, session_factory: sessionmaker[Session] | None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._session_factory = session_factory
         self._mem: dict[str, TaskRecord] = {}
 
     def create(self, task: TaskRecord) -> None:
+        # 步骤：执行 `create` 的核心处理逻辑。
         if self._session_factory is None:
             self._mem[task.task_id] = task
             return
@@ -61,6 +63,7 @@ class TaskRepository:
         result_json: dict[str, Any] | None = None,
         error_message: str | None = None,
     ) -> None:
+        # 步骤：执行 `update_status` 的核心处理逻辑。
         if self._session_factory is None:
             item = self._mem.get(task_id)
             if item is None:
@@ -85,6 +88,7 @@ class TaskRepository:
             session.commit()
 
     def get(self, task_id: str) -> TaskRecord | None:
+        # 步骤：执行 `get` 的核心处理逻辑。
         if self._session_factory is None:
             return self._mem.get(task_id)
 
@@ -98,6 +102,7 @@ class TaskRepository:
         event_type: str,
         payload: dict[str, Any],
     ) -> None:
+        # 步骤：执行 `append_audit_event` 的核心处理逻辑。
         if self._session_factory is None:
             return
         with self._session_factory() as session:
@@ -113,6 +118,7 @@ class TaskRepository:
             session.commit()
 
     def list_recoverable_tasks(self) -> list[TaskRecord]:
+        # 步骤：执行 `list_recoverable_tasks` 的核心处理逻辑。
         if self._session_factory is None:
             return [item for item in self._mem.values() if item.status in {"queued", "running"}]
 
@@ -127,10 +133,12 @@ class TaskRepository:
 
     @staticmethod
     def now_utc() -> datetime:
+        # 步骤：执行 `now_utc` 的核心处理逻辑。
         return datetime.now(timezone.utc)
 
     @staticmethod
     def _to_record(row: TaskQueueStatusORM) -> TaskRecord:
+        # 步骤：执行 `_to_record` 的核心处理逻辑。
         return TaskRecord(
             task_id=row.task_id,
             tenant_id=row.tenant_id,

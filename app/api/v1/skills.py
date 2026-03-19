@@ -1,4 +1,4 @@
-﻿"""技能接口：创建技能模板并按版本读取技能定义。"""
+"""技能接口：创建技能模板并按版本读取技能定义。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ def create_skill(
     auth: AuthContext = Depends(require_auth_context),
     container: ServiceContainer = Depends(get_container),
 ) -> SkillSpec:
+    # 步骤：执行 `create_skill` 的核心处理逻辑。
     _ = auth
     return container.skill_center.generate_skill(
         skill_id=payload.skill_id,
@@ -36,6 +37,7 @@ def get_skill(
     auth: AuthContext = Depends(require_auth_context),
     container: ServiceContainer = Depends(get_container),
 ) -> SkillSpec:
+    # 步骤：执行 `get_skill` 的核心处理逻辑。
     _ = auth
     try:
         return container.skill_center.load_skill(skill_id=skill_id, version=version)

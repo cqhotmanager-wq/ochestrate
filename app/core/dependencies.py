@@ -1,4 +1,4 @@
-﻿"""依赖容器：组装服务、仓储、工具与运行时回退策略。"""
+"""依赖容器：组装服务、仓储、工具与运行时回退策略。"""
 
 from __future__ import annotations
 
@@ -155,6 +155,7 @@ class ServiceContainer:
         - 先构造 `WebFetchTool`，再将其复用给 `WebSearchTool`，避免重复实现抓取策略。
         - 工具权限和审计统一由 `ToolHub` 管控。
         """
+        # 步骤：执行 `_register_tools` 的核心处理逻辑。
         fetch_tool = WebFetchTool(self.tool_security)
         self.tool_hub.register(SendEmailTool())
         self.tool_hub.register(CreateCalendarEventTool())
@@ -170,6 +171,7 @@ class ServiceContainer:
         - `prod` 环境：数据库不可用时直接抛错，阻止服务以降级模式启动。
         - `dev/test` 环境：记录告警并回退到内存仓储，便于本地开发与 CI。
         """
+        # 步骤：执行 `_build_mysql_engine` 的核心处理逻辑。
         try:
             engine = create_engine(dsn, pool_pre_ping=True)
             with engine.connect() as conn:
@@ -207,11 +209,13 @@ class ServiceContainer:
 
     def _is_prod_env(self) -> bool:
         """是否为生产环境判定。"""
+        # 步骤：执行 `_is_prod_env` 的核心处理逻辑。
         return (self.settings.env or "").strip().lower() in {"prod", "production"}
 
     @staticmethod
     def _is_redis_reachable(redis_url: str) -> bool:
         """快速探测 Redis 主机端口连通性。"""
+        # 步骤：执行 `_is_redis_reachable` 的核心处理逻辑。
         parsed = urlparse(redis_url)
         host = parsed.hostname
         port = parsed.port or 6379
@@ -227,6 +231,7 @@ class ServiceContainer:
 @lru_cache(maxsize=1)
 def get_container() -> ServiceContainer:
     """获取进程级容器单例。"""
+    # 步骤：执行 `get_container` 的核心处理逻辑。
     return ServiceContainer()
 
 

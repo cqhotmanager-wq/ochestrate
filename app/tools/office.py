@@ -1,4 +1,4 @@
-﻿"""办公自动化工具：封装邮件发送与日程创建能力。"""
+"""办公自动化工具：封装邮件发送与日程创建能力。"""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ class SendEmailTool:
     idempotent = True
 
     def run(self, params: dict[str, str]) -> dict[str, str]:
+        # 步骤：执行 `run` 的核心处理逻辑。
         to = params.get("to", "")
         subject = params.get("subject", "")
         body = params.get("body", "")
@@ -23,6 +24,7 @@ class CreateCalendarEventTool:
     idempotent = True
 
     def run(self, params: dict[str, str]) -> dict[str, str]:
+        # 步骤：执行 `run` 的核心处理逻辑。
         title = params.get("title", "Untitled")
         when = params.get("when", "unspecified")
         return {"status": "created", "title": title, "when": when}

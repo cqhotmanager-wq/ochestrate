@@ -1,4 +1,4 @@
-﻿"""执行智能体：按策略调用工具中心并汇总动作结果。"""
+"""执行智能体：按策略调用工具中心并汇总动作结果。"""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from app.tools.hub import ToolHub
 
 class ExecutorAgent:
     def __init__(self, tool_hub: ToolHub) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._tool_hub = tool_hub
 
     def execute(
@@ -24,6 +25,7 @@ class ExecutorAgent:
         policy: ExecutionPolicy,
         tool_overrides: dict[str, Any] | None = None,
     ) -> list[Action]:
+        # 步骤：执行 `execute` 的核心处理逻辑。
         actions: list[Action] = []
         if not policy.auto_execute:
             return [

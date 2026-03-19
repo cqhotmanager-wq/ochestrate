@@ -1,4 +1,4 @@
-﻿"""Milvus 适配器：负责向量存储连通性检查。"""
+"""Milvus 适配器：负责向量存储连通性检查。"""
 
 from __future__ import annotations
 try:
@@ -9,6 +9,7 @@ except Exception:  # pragma: no cover - optional dependency at runtime
 
 class MilvusAdapter:
     def __init__(self, uri: str) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._uri = uri
 
     def healthcheck(self) -> bool:

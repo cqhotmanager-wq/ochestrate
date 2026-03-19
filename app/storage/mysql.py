@@ -1,4 +1,4 @@
-﻿"""MySQL 适配器：负责连接延迟初始化与健康检查。"""
+"""MySQL 适配器：负责连接延迟初始化与健康检查。"""
 
 from __future__ import annotations
 from sqlalchemy import create_engine, text
@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 
 class MySQLAdapter:
     def __init__(self, dsn: str) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._dsn = dsn
         self._engine: Engine | None = None
 
@@ -17,6 +18,7 @@ class MySQLAdapter:
         return self._engine
 
     def healthcheck(self) -> bool:
+        # 步骤：执行 `healthcheck` 的核心处理逻辑。
         try:
             with self.engine().connect() as conn:
                 conn.execute(text("SELECT 1"))

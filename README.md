@@ -112,4 +112,5 @@ curl -X POST http://127.0.0.1:8000/v1/auth/login `
 
 - Architecture: `docs/architecture.md`
 - Chinese guide: `docs/中文使用说明.md`
+- Developer handbook: `docs/开发手册.md`
 - MySQL schema: `docs/sql/mysql_schema.sql`

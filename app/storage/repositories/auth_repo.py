@@ -1,4 +1,4 @@
-﻿"""认证仓储：封装用户与 Refresh Token 的持久化访问。"""
+"""认证仓储：封装用户与 Refresh Token 的持久化访问。"""
 
 from __future__ import annotations
 
@@ -26,11 +26,13 @@ class UserRecord:
 
 class AuthRepository:
     def __init__(self, session_factory: sessionmaker[Session] | None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._session_factory = session_factory
         self._users_mem: dict[tuple[str, str], UserRecord] = {}
         self._refresh_mem: dict[str, dict[str, Any]] = {}
 
     def is_empty(self) -> bool:
+        # 步骤：执行 `is_empty` 的核心处理逻辑。
         if self._session_factory is None:
             return len(self._users_mem) == 0
         with self._session_factory() as session:
@@ -45,6 +47,7 @@ class AuthRepository:
         role: str,
         status: str = "active",
     ) -> UserRecord:
+        # 步骤：执行 `create_user` 的核心处理逻辑。
         user_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc)
         record = UserRecord(
@@ -75,6 +78,7 @@ class AuthRepository:
             return self._as_user_record(row)
 
     def get_user_by_username(self, tenant_id: str, username: str) -> UserRecord | None:
+        # 步骤：执行 `get_user_by_username` 的核心处理逻辑。
         if self._session_factory is None:
             return self._users_mem.get((tenant_id, username))
         with self._session_factory() as session:
@@ -87,6 +91,7 @@ class AuthRepository:
             return None if row is None else self._as_user_record(row)
 
     def get_user_by_id(self, tenant_id: str, user_id: str) -> UserRecord | None:
+        # 步骤：执行 `get_user_by_id` 的核心处理逻辑。
         if self._session_factory is None:
             for rec in self._users_mem.values():
                 if rec.tenant_id == tenant_id and rec.user_id == user_id:
@@ -102,6 +107,7 @@ class AuthRepository:
             return None if row is None else self._as_user_record(row)
 
     def list_users(self, tenant_id: str) -> list[UserRecord]:
+        # 步骤：执行 `list_users` 的核心处理逻辑。
         if self._session_factory is None:
             return [r for r in self._users_mem.values() if r.tenant_id == tenant_id]
 
@@ -122,6 +128,7 @@ class AuthRepository:
         status: str | None = None,
         password_hash: str | None = None,
     ) -> UserRecord | None:
+        # 步骤：执行 `update_user` 的核心处理逻辑。
         current = self.get_user_by_id(tenant_id, user_id)
         if current is None:
             return None
@@ -169,6 +176,7 @@ class AuthRepository:
         refresh_token_hash: str,
         expires_at: datetime,
     ) -> None:
+        # 步骤：执行 `store_refresh_token` 的核心处理逻辑。
         if self._session_factory is None:
             self._refresh_mem[token_id] = {
                 "token_id": token_id,
@@ -196,6 +204,7 @@ class AuthRepository:
             session.commit()
 
     def get_refresh_token(self, token_id: str) -> dict[str, Any] | None:
+        # 步骤：执行 `get_refresh_token` 的核心处理逻辑。
         if self._session_factory is None:
             return self._refresh_mem.get(token_id)
 
@@ -217,6 +226,7 @@ class AuthRepository:
             }
 
     def revoke_refresh_token(self, token_id: str) -> None:
+        # 步骤：执行 `revoke_refresh_token` 的核心处理逻辑。
         if self._session_factory is None:
             if token_id in self._refresh_mem:
                 self._refresh_mem[token_id]["revoked"] = True
@@ -229,6 +239,7 @@ class AuthRepository:
                 session.commit()
 
     def cleanup_expired_refresh_tokens(self) -> None:
+        # 步骤：执行 `cleanup_expired_refresh_tokens` 的核心处理逻辑。
         now = datetime.now(timezone.utc)
         if self._session_factory is None:
             for token_id in list(self._refresh_mem.keys()):
@@ -246,6 +257,7 @@ class AuthRepository:
             session.commit()
 
     def create_bootstrap_admin_if_needed(self, tenant_id: str, username: str, password_hash: str) -> UserRecord:
+        # 步骤：执行 `create_bootstrap_admin_if_needed` 的核心处理逻辑。
         existing = self.get_user_by_username(tenant_id, username)
         if existing is not None:
             return existing
@@ -261,14 +273,17 @@ class AuthRepository:
 
     @staticmethod
     def refresh_token_expired(expires_at: datetime) -> bool:
+        # 步骤：执行 `refresh_token_expired` 的核心处理逻辑。
         return expires_at <= datetime.now(timezone.utc)
 
     @staticmethod
     def refresh_token_expiry(days: int) -> datetime:
+        # 步骤：执行 `refresh_token_expiry` 的核心处理逻辑。
         return datetime.now(timezone.utc) + timedelta(days=days)
 
     @staticmethod
     def _as_user_record(row: UserCredentialORM) -> UserRecord:
+        # 步骤：执行 `_as_user_record` 的核心处理逻辑。
         created = row.created_at
         if created.tzinfo is None:
             created = created.replace(tzinfo=timezone.utc)

@@ -1,4 +1,4 @@
-﻿"""异步任务接口：提交任务、查询状态并通过 SSE 推送进度。"""
+"""异步任务接口：提交任务、查询状态并通过 SSE 推送进度。"""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ def _assert_task_tenant_access(task_id: str, auth: AuthContext, container: Servi
     - 只有同租户用户才允许读取任务状态与事件流。
     - 当任务不存在时不在此处抛 404，由后续状态查询统一返回语义化错误。
     """
+    # 步骤：执行 `_assert_task_tenant_access` 的核心处理逻辑。
     record = container.task_repository.get(task_id)
     if record is None:
         return
@@ -33,6 +34,7 @@ def _assert_task_tenant_access(task_id: str, auth: AuthContext, container: Servi
 
 def _format_sse(event: str, payload: str) -> str:
     """格式化 SSE 消息帧。"""
+    # 步骤：执行 `_format_sse` 的核心处理逻辑。
     return f"event: {event}\ndata: {payload}\n\n"
 
 
@@ -56,6 +58,7 @@ def get_task_status(
     container: ServiceContainer = Depends(get_container),
 ) -> TaskStatusResponse:
     """查询任务状态。"""
+    # 步骤：执行 `get_task_status` 的核心处理逻辑。
     _assert_task_tenant_access(task_id, auth, container)
     task_status = container.task_manager.get_status(task_id)
     return task_status

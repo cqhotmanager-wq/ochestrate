@@ -1,4 +1,4 @@
-﻿"""反馈接口：接收人工反馈并驱动学习管线统计更新。"""
+"""反馈接口：接收人工反馈并驱动学习管线统计更新。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ def submit_feedback(
     container: ServiceContainer = Depends(get_container),
 ) -> dict[str, object]:
     """提交反馈并返回即时统计。"""
+    # 步骤：执行 `submit_feedback` 的核心处理逻辑。
     scoped_request = bind_feedback_auth(request, auth)
     container.learning_pipeline.submit_feedback(scoped_request)
     stats = container.learning_pipeline.process_batch()

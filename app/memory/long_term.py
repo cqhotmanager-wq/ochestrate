@@ -1,4 +1,4 @@
-﻿"""长期记忆存储：按租户用户保存带 TTL 的记忆记录。"""
+"""长期记忆存储：按租户用户保存带 TTL 的记忆记录。"""
 
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
@@ -8,6 +8,7 @@ from app.schemas.specs import MemoryRecord
 
 class LongTermMemoryStore:
     def __init__(self, default_ttl_days: int) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._default_ttl_days = default_ttl_days
         self._records: list[MemoryRecord] = []
 

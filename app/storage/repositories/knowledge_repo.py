@@ -1,4 +1,4 @@
-﻿"""知识仓储：保存知识分块并执行检索排序。"""
+"""知识仓储：保存知识分块并执行检索排序。"""
 
 from __future__ import annotations
 
@@ -11,10 +11,12 @@ from app.storage.models import KnowledgeChunkORM
 
 class KnowledgeRepository:
     def __init__(self, session_factory: sessionmaker[Session] | None) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._session_factory = session_factory
         self._mem: list[KnowledgeChunk] = []
 
     def add_chunks(self, chunks: list[KnowledgeChunk]) -> None:
+        # 步骤：执行 `add_chunks` 的核心处理逻辑。
         if not chunks:
             return
 
@@ -47,6 +49,7 @@ class KnowledgeRepository:
             session.commit()
 
     def search(self, tenant_id: str, query: str, limit: int = 5) -> list[KnowledgeChunk]:
+        # 步骤：执行 `search` 的核心处理逻辑。
         normalized = query.lower().strip()
 
         if self._session_factory is None:
@@ -76,6 +79,7 @@ class KnowledgeRepository:
 
     @staticmethod
     def _rank(chunks: list[KnowledgeChunk], normalized_query: str, limit: int) -> list[KnowledgeChunk]:
+        # 步骤：执行 `_rank` 的核心处理逻辑。
         if not normalized_query:
             return chunks[:limit]
 

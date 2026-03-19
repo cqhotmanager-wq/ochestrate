@@ -1,4 +1,4 @@
-﻿"""工具中心：执行注册、权限校验、幂等缓存与审计记录。"""
+"""工具中心：执行注册、权限校验、幂等缓存与审计记录。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ class ToolHub:
     """
 
     def __init__(self, metrics: MetricsRegistry, audit: AuditLogger) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._metrics = metrics
         self._audit = audit
         self._registry: dict[str, Tool] = {}
@@ -27,10 +28,12 @@ class ToolHub:
 
     def register(self, tool: Tool) -> None:
         """注册工具到中心。"""
+        # 步骤：执行 `register` 的核心处理逻辑。
         self._registry[tool.name] = tool
 
     def list_capabilities(self) -> list[dict[str, Any]]:
         """输出工具能力清单，供提示词注入与调试使用。"""
+        # 步骤：执行 `list_capabilities` 的核心处理逻辑。
         return [
             {
                 "name": tool.name,

@@ -1,4 +1,4 @@
-﻿"""认证服务：处理密码校验、Token 签发刷新和用户管理。"""
+"""认证服务：处理密码校验、Token 签发刷新和用户管理。"""
 
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ class AuthService:
         access_token_ttl_minutes: int,
         refresh_token_ttl_days: int,
     ) -> None:
+        # 步骤：执行 `__init__` 的核心处理逻辑。
         self._repo = repository
         self._jwt_secret = jwt_secret
         self._jwt_algorithm = jwt_algorithm
@@ -39,6 +40,7 @@ class AuthService:
 
     def hash_password(self, password: str) -> str:
         """使用 PBKDF2-SHA256 生成密码散列。"""
+        # 步骤：执行 `hash_password` 的核心处理逻辑。
         salt = os.urandom(16)
         rounds = 120000
         digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, rounds)
@@ -46,6 +48,7 @@ class AuthService:
 
     def verify_password(self, password: str, encoded: str) -> bool:
         """校验输入密码是否与存储散列匹配。"""
+        # 步骤：执行 `verify_password` 的核心处理逻辑。
         try:
             method, rounds_str, salt_hex, digest_hex = encoded.split("$", 3)
             if method != "pbkdf2_sha256":
@@ -60,6 +63,7 @@ class AuthService:
 
     def create_user(self, tenant_id: str, username: str, password: str, role: str, status: str) -> UserRecord:
         """创建用户并写入散列后的密码。"""
+        # 步骤：执行 `create_user` 的核心处理逻辑。
         return self._repo.create_user(
             tenant_id=tenant_id,
             username=username,
@@ -77,6 +81,7 @@ class AuthService:
         password: str | None = None,
     ) -> UserRecord | None:
         """更新用户角色、状态或密码。"""
+        # 步骤：执行 `update_user` 的核心处理逻辑。
         password_hash = self.hash_password(password) if password else None
         return self._repo.update_user(
             tenant_id=tenant_id,
@@ -88,10 +93,12 @@ class AuthService:
 
     def list_users(self, tenant_id: str) -> list[UserRecord]:
         """按租户列出用户。"""
+        # 步骤：执行 `list_users` 的核心处理逻辑。
         return self._repo.list_users(tenant_id)
 
     def bootstrap_admin_if_needed(self, tenant_id: str, username: str, password: str) -> UserRecord:
         """初始化第一个管理员用户。"""
+        # 步骤：执行 `bootstrap_admin_if_needed` 的核心处理逻辑。
         return self._repo.create_bootstrap_admin_if_needed(
             tenant_id=tenant_id,
             username=username,
@@ -100,6 +107,7 @@ class AuthService:
 
     def login(self, tenant_id: str, username: str, password: str) -> LoginResponse:
         """登录流程：校验身份后签发 Access/Refresh Token。"""
+        # 步骤：执行 `login` 的核心处理逻辑。
         user = self._repo.get_user_by_username(tenant_id=tenant_id, username=username)
         if user is None:
             raise PermissionError("invalid username or password")
@@ -142,6 +150,7 @@ class AuthService:
 
     def logout(self, refresh_token: str) -> None:
         """退出登录：吊销指定 refresh token。"""
+        # 步骤：执行 `logout` 的核心处理逻辑。
         payload = self._decode_token(refresh_token)
         token_id = str(payload.get("jti") or "")
         if token_id:
@@ -149,6 +158,7 @@ class AuthService:
 
     def decode_access_token(self, token: str) -> AuthContext:
         """解析并校验 Access Token，返回请求鉴权上下文。"""
+        # 步骤：执行 `decode_access_token` 的核心处理逻辑。
         payload = self._decode_token(token)
         if payload.get("typ") != "access":
             raise PermissionError("invalid token type")
@@ -221,6 +231,7 @@ class AuthService:
 
     def _decode_token(self, token: str) -> dict:
         """统一解码 JWT；异常统一转换为 PermissionError。"""
+        # 步骤：执行 `_decode_token` 的核心处理逻辑。
         try:
             return jwt.decode(token, self._jwt_secret, algorithms=[self._jwt_algorithm])
         except jwt.PyJWTError as exc:
@@ -229,6 +240,7 @@ class AuthService:
     @staticmethod
     def _hash_token(token: str) -> str:
         """对 Refresh Token 做哈希用于服务端比对。"""
+        # 步骤：执行 `_hash_token` 的核心处理逻辑。
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 

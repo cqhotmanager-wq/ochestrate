@@ -1,4 +1,4 @@
-﻿"""日志配置：初始化全局日志格式、级别与输出行为。"""
+"""日志配置：初始化全局日志格式、级别与输出行为。"""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover
 
 
 def configure_logging() -> None:
+    # 步骤：执行 `configure_logging` 的核心处理逻辑。
     root = logging.getLogger()
     if root.handlers:
         return

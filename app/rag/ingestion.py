@@ -1,4 +1,4 @@
-﻿"""知识摄取：将原始文本切分为可检索知识分块。"""
+"""知识摄取：将原始文本切分为可检索知识分块。"""
 
 from __future__ import annotations
 import hashlib
@@ -18,6 +18,7 @@ class IngestionPipeline:
 
     def ingest_text(self, tenant_id: str, source_id: str, text: str, chunk_size: int = 600) -> list[KnowledgeChunk]:
         """摄取文本并输出知识分块。"""
+        # 步骤：执行 `ingest_text` 的核心处理逻辑。
         chunks: list[KnowledgeChunk] = []
         raw_chunks: list[str] = []
         if self._splitter is not None:

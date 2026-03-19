@@ -1,4 +1,4 @@
-﻿"""规划智能体：根据任务类型和工具负载生成可执行步骤。"""
+"""规划智能体：根据任务类型和工具负载生成可执行步骤。"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from app.schemas.api import ToolPayload, UnifiedRequest
 
 class PlannerAgent:
     def plan(self, request: UnifiedRequest) -> list[dict[str, Any]]:
+        # 步骤：执行 `plan` 的核心处理逻辑。
         explicit_tool_step = self._step_from_payload(request.tool_payload)
         if explicit_tool_step is not None:
             return [{"kind": "validate_permissions"}, explicit_tool_step]
@@ -48,6 +49,7 @@ class PlannerAgent:
 
     @staticmethod
     def _step_from_payload(payload: ToolPayload | None) -> dict[str, Any] | None:
+        # 步骤：执行 `_step_from_payload` 的核心处理逻辑。
         if payload is None:
             return None
         resource_type = payload.resource_type.lower()
