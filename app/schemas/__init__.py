@@ -1,18 +1,28 @@
-﻿"""模式定义导出：统一对外暴露 API 与领域数据结构。"""
+﻿"""Schema exports."""
 
 from app.schemas.api import (
     Action,
     Citation,
     CreateSkillRequest,
     ExecutionPolicy,
+    ExecutionTraceRecord,
     FeedbackRequest,
+    FinalResult,
     IngestTextRequest,
+    IntentSummary,
     MemoryUpdate,
+    ReflectionRecord,
+    SkillMatch,
+    SkillSelection,
     SubmitTaskRequest,
+    TaskDependency,
+    TaskGraphSpec,
+    TaskNodeSpec,
     TaskStatusResponse,
     ToolPayload,
     UnifiedRequest,
     UnifiedResponse,
+    VerificationReport,
 )
 from app.schemas.specs import (
     AgentSpec,
@@ -24,24 +34,32 @@ from app.schemas.specs import (
 )
 
 __all__ = [
-    "Action",
     "AgentSpec",
+    "Action",
     "Citation",
     "CreateSkillRequest",
     "ExecutionPolicy",
+    "ExecutionTraceRecord",
     "FeedbackRequest",
+    "FinalResult",
     "IngestTextRequest",
+    "IntentSummary",
     "KnowledgeChunk",
     "MemoryRecord",
-    "MemoryUpdate",
     "ModelRouteRule",
+    "MemoryUpdate",
+    "ReflectionRecord",
+    "SkillMatch",
+    "SkillSelection",
     "SkillSpec",
     "SubmitTaskRequest",
+    "TaskDependency",
+    "TaskGraphSpec",
+    "TaskNodeSpec",
     "TaskStatusResponse",
     "ToolPayload",
     "ToolSpec",
     "UnifiedRequest",
     "UnifiedResponse",
+    "VerificationReport",
 ]
-
-

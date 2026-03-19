@@ -1,4 +1,4 @@
-﻿"""API 模式：定义统一请求/响应、动作、任务与反馈结构。"""
+﻿"""API schemas for request/response payloads and orchestration reports."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ class ExecutionPolicy(BaseModel):
 
 
 class UnifiedRequest(BaseModel):
-    tenant_id: str | None = Field(default=None, description="由访问令牌解析，客户端字段将被忽略。")
-    user_id: str | None = Field(default=None, description="由访问令牌解析，客户端字段将被忽略。")
+    tenant_id: str | None = Field(default=None, description="Injected from auth context.")
+    user_id: str | None = Field(default=None, description="Injected from auth context.")
     session_id: str
     task_type: Literal["qa", "automation", "analysis"] = "qa"
     input: str = Field(min_length=1)
@@ -38,6 +38,84 @@ class UnifiedRequest(BaseModel):
     tool_payload: ToolPayload | None = None
     tool_overrides: dict[str, Any] = Field(default_factory=dict)
     skill_context_mode: Literal["auto", "force_all"] = "auto"
+
+
+class IntentSummary(BaseModel):
+    goal: str
+    constraints: list[str] = Field(default_factory=list)
+    expected_output: list[str] = Field(default_factory=list)
+    assumption_flags: list[str] = Field(default_factory=list)
+    needs_clarification: bool = False
+    clarifications: list[str] = Field(default_factory=list)
+
+
+class TaskNodeSpec(BaseModel):
+    node_id: str
+    title: str
+    description: str
+    node_type: Literal["memory", "skill", "tool", "model", "verify", "report"]
+    depends_on: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TaskDependency(BaseModel):
+    from_node: str
+    to_node: str
+
+
+class TaskGraphSpec(BaseModel):
+    nodes: list[TaskNodeSpec] = Field(default_factory=list)
+    dependencies: list[TaskDependency] = Field(default_factory=list)
+    parallel_groups: list[list[str]] = Field(default_factory=list)
+
+
+class SkillMatch(BaseModel):
+    name: str
+    description: str
+    score: float
+    skill_path: str
+    tools: list[str] = Field(default_factory=list)
+
+
+class SkillSelection(BaseModel):
+    task_node_id: str
+    query: str
+    skills: list[SkillMatch] = Field(default_factory=list)
+    tools: list[str] = Field(default_factory=list)
+
+
+class ReflectionRecord(BaseModel):
+    node_id: str
+    decision: Literal["accept", "retry", "fail"]
+    reason: str
+    retry_count: int = 0
+
+
+class ExecutionTraceRecord(BaseModel):
+    node_id: str
+    status: Literal["success", "failed", "skipped"]
+    result: dict[str, Any] = Field(default_factory=dict)
+    reflection: ReflectionRecord | None = None
+    retry_count: int = 0
+    error: str | None = None
+
+
+class VerificationReport(BaseModel):
+    all_tasks_completed: bool
+    outputs_consistent: bool
+    missing_nodes: list[str] = Field(default_factory=list)
+    checks: list[str] = Field(default_factory=list)
+
+
+class FinalResult(BaseModel):
+    summary: str
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    success: bool
+
+
+class MemoryUpdate(BaseModel):
+    memory_type: Literal["short", "long"]
+    content: str
 
 
 class Citation(BaseModel):
@@ -56,19 +134,16 @@ class Action(BaseModel):
     policy_applied: dict[str, Any] = Field(default_factory=dict)
 
 
-class MemoryUpdate(BaseModel):
-    memory_type: Literal["short", "long"]
-    content: str
-
-
 class UnifiedResponse(BaseModel):
-    answer: str
-    citations: list[Citation] = Field(default_factory=list)
-    actions: list[Action] = Field(default_factory=list)
-    confidence: float = 0.0
+    status: Literal["completed", "needs_clarification", "failed"]
+    intent: IntentSummary
+    task_graph: TaskGraphSpec | None = None
+    skill_mapping: list[SkillSelection] = Field(default_factory=list)
+    execution_trace: list[ExecutionTraceRecord] = Field(default_factory=list)
+    verification: VerificationReport | None = None
+    final_result: FinalResult | None = None
     trace_id: str
-    memory_updates: list[MemoryUpdate] = Field(default_factory=list)
-    fallback_triggered: bool = False
+    clarifications: list[str] = Field(default_factory=list)
 
 
 class SubmitTaskRequest(BaseModel):
@@ -105,4 +180,3 @@ class CreateSkillRequest(BaseModel):
     name: str
     prompt_template: str
     config: dict[str, Any] = Field(default_factory=dict)
-

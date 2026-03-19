@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Float, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.storage.orm import Base
@@ -110,5 +110,44 @@ class KnowledgeChunkORM(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class SkillRegistryEntryORM(Base):
+    __tablename__ = "skill_registry_entries"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "skill_name", name="uk_skill_registry_name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    skill_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    skill_path: Mapped[str] = mapped_column(Text, nullable=False)
+    tools_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    embedding_json: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="skill_md")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+
+class LongTermMemoryORM(Base):
+    __tablename__ = "long_term_memories"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    task: Mapped[str] = mapped_column(Text, nullable=False)
+    solution: Mapped[str] = mapped_column(Text, nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    lessons_learned: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tags_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    embedding_json: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
 

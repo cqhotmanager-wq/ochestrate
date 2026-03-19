@@ -74,7 +74,11 @@ def test_agent_run_and_feedback_flow() -> None:
     )
     assert run_resp.status_code == 200
     payload = run_resp.json()
-    assert "answer" in payload
+    assert payload["status"] in {"completed", "failed"}
+    assert "intent" in payload
+    assert "task_graph" in payload
+    assert "execution_trace" in payload
+    assert "final_result" in payload
     assert "trace_id" in payload
 
     feedback_resp = client.post(
@@ -163,3 +167,63 @@ def test_task_status_sse_flow() -> None:
         assert events[-1]["task_id"] == task_id
         assert events[-1]["status"] == "completed"
         assert events[-1]["result"] is not None
+
+
+@pytest.mark.skipif(TestClient is None, reason="fastapi test client unavailable")
+def test_agent_replan_trace_after_tool_failure() -> None:
+    client = TestClient(app)
+    tenant_id = "acme-replan"
+
+    bootstrap_resp = client.post(
+        "/v1/auth/bootstrap-admin",
+        json={
+            "tenant_id": tenant_id,
+            "username": "admin",
+            "password": "admin123",
+            "role": "admin",
+            "status": "active",
+        },
+    )
+    assert bootstrap_resp.status_code == 200
+
+    login_resp = client.post(
+        "/v1/auth/login",
+        json={
+            "tenant_id": tenant_id,
+            "username": "admin",
+            "password": "admin123",
+        },
+    )
+    assert login_resp.status_code == 200
+    tokens = login_resp.json()
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    run_resp = client.post(
+        "/v1/agent/run",
+        json={
+            "tenant_id": tenant_id,
+            "user_id": "fake_user",
+            "session_id": "replan001",
+            "task_type": "automation",
+            "input": "Run this database query",
+            "tool_payload": {
+                "operation": "query",
+                "resource_type": "database",
+                "sql": "SELECT * FROM non_existing_table",
+            },
+            "policy": {
+                "sensitivity": "low",
+                "max_cost_usd": 0.5,
+                "auto_execute": True,
+                "require_human_review": False,
+                "timeout_seconds": 60,
+            },
+        },
+        headers=headers,
+    )
+    assert run_resp.status_code == 200
+    payload = run_resp.json()
+    assert payload["status"] == "completed"
+    node_ids = [item["node_id"] for item in payload["execution_trace"]]
+    assert "tool_database_tool" in node_ids
+    assert "fallback_resolution" in node_ids

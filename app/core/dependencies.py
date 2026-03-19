@@ -1,4 +1,4 @@
-"""依赖容器：组装服务、仓储、工具与运行时回退策略。"""
+﻿"""Dependency container wiring for services and runtime policies."""
 
 from __future__ import annotations
 
@@ -13,12 +13,14 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.agents.executor import ExecutorAgent
+from app.agents.intent import IntentAnalyzer
 from app.agents.planner import PlannerAgent
 from app.agents.retriever import RetrieverAgent
 from app.agents.reviewer import ReviewerAgent
 from app.auth.service import AuthService
 from app.context.manager import ContextManager
 from app.core.config import Settings
+from app.embeddings.service import EmbeddingConfig, EmbeddingService
 from app.learning.pipeline import EnterpriseLearningPipeline
 from app.memory.service import MemoryService
 from app.models.router import ModelRouter
@@ -32,11 +34,15 @@ from app.rag.retriever import HybridRetriever
 from app.rag.store import KnowledgeStore
 from app.skills.center import SkillCenter
 from app.skills.context import SkillContextService
+from app.skills.registry import SkillRegistryService
 from app.storage.orm import create_session_factory
 from app.storage.repositories.auth_repo import AuthRepository
 from app.storage.repositories.feedback_repo import FeedbackRepository
 from app.storage.repositories.knowledge_repo import KnowledgeRepository
+from app.storage.repositories.long_memory_repo import LongTermMemoryRepository
+from app.storage.repositories.skill_registry_repo import SkillRegistryRepository
 from app.storage.repositories.task_repo import TaskRepository
+from app.storage.vector_gateway import VectorStoreGateway
 from app.tools.database_tool import DatabaseTool
 from app.tools.file_tool import FileTool
 from app.tools.hub import ToolHub
@@ -50,34 +56,25 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceContainer:
-    """应用级依赖容器。
-
-    说明：
-    - 该容器在进程内按单例创建，负责把配置、仓储、工具、模型、编排等组件一次性装配完成。
-    - 业务代码通过 `get_container()` 获取容器实例，避免在路由层反复手工拼装依赖。
-    """
-
     def __init__(self) -> None:
-        # 1) 基础运行时能力：配置、工作目录、追踪、指标。
         self.settings = Settings()
         self.workspace = Path.cwd()
         self.trace = TraceService()
         self.metrics = MetricsRegistry()
 
-        # 2) 数据面初始化：先尝试创建 MySQL 引擎，失败后按环境策略决定是否回退到内存模式。
         self.mysql_engine = self._build_mysql_engine(self.settings.mysql_dsn)
         self.mysql_session_factory: sessionmaker[Session] | None = (
             create_session_factory(self.mysql_engine) if self.mysql_engine is not None else None
         )
 
-        # 3) 仓储与审计组件：任务仓储也被审计日志复用为持久化下沉点。
         self.task_repository = TaskRepository(self.mysql_session_factory)
         self.audit = AuditLogger(self.settings.audit_log_path, persistent_sink=self.task_repository)
         self.auth_repository = AuthRepository(self.mysql_session_factory)
         self.feedback_repository = FeedbackRepository(self.mysql_session_factory)
         self.knowledge_repository = KnowledgeRepository(self.mysql_session_factory)
+        self.long_memory_repository = LongTermMemoryRepository(self.mysql_session_factory)
+        self.skill_registry_repository = SkillRegistryRepository(self.mysql_session_factory)
 
-        # 4) 认证服务：集中处理密码散列、Token 签发与刷新逻辑。
         self.auth_service = AuthService(
             repository=self.auth_repository,
             jwt_secret=self.settings.jwt_secret,
@@ -86,29 +83,60 @@ class ServiceContainer:
             refresh_token_ttl_days=self.settings.refresh_token_ttl_days,
         )
 
-        # 5) 上下文与记忆：为编排层提供短期/长期记忆，以及统一上下文预算控制。
+        allow_mock_fallback = self.settings.embedding_allow_mock_fallback
+        if self._is_prod_env():
+            # In prod we default to strict cloud embedding behavior.
+            allow_mock_fallback = False
+
+        self.embedding_service = EmbeddingService(
+            config=EmbeddingConfig(
+                provider=self.settings.embedding_provider,
+                model=self.settings.embedding_model,
+                timeout_seconds=self.settings.embedding_timeout_seconds,
+                openai_api_key=self.settings.embedding_openai_api_key or None,
+                azure_api_key=self.settings.embedding_azure_api_key or None,
+                azure_endpoint=self.settings.embedding_azure_endpoint or None,
+                azure_api_version=self.settings.embedding_azure_api_version,
+                allow_mock_fallback=allow_mock_fallback,
+            ),
+            env=self.settings.env,
+        )
+
+        self.vector_gateway = VectorStoreGateway(
+            milvus_uri=self.settings.milvus_uri,
+            collection_name=self.settings.milvus_collection_name,
+            dimension=self.settings.vector_dimension,
+            use_milvus=self.settings.vector_use_milvus,
+        )
+
         self.memory_service = MemoryService(
             short_turns=self.settings.short_memory_turns,
             long_ttl_days=self.settings.long_memory_default_ttl_days,
+            long_term_repository=self.long_memory_repository,
+            embedding_service=self.embedding_service,
+            vector_gateway=self.vector_gateway,
         )
         self.context_manager = ContextManager(max_tokens=self.settings.max_context_tokens)
 
-        # 6) 知识检索面：摄取管线 + 知识存储 + 检索器。
         self.knowledge_store = KnowledgeStore(repository=self.knowledge_repository)
         self.ingestion_pipeline = IngestionPipeline()
         self.rag_retriever = HybridRetriever(self.knowledge_store)
 
-        # 7) 技能、学习与提示词装配。
         self.skill_center = SkillCenter(storage_dir=self.settings.skill_storage_dir)
         self.skill_context = SkillContextService(
             skill_center=self.skill_center,
             scan_dirs=self.settings.skill_scan_dirs,
             skill_scan_glob=self.settings.skill_scan_glob,
         )
+        self.skill_registry = SkillRegistryService(
+            context_service=self.skill_context,
+            repository=self.skill_registry_repository,
+            embedding_service=self.embedding_service,
+            vector_gateway=self.vector_gateway,
+        )
         self.learning_pipeline = EnterpriseLearningPipeline(repository=self.feedback_repository)
         self.prompt_assembly = PromptAssemblyService(max_tokens=self.settings.max_context_tokens)
 
-        # 8) 工具安全与工具中心。
         self.tool_security = ToolSecurityConfig.from_file(
             path=self.settings.tool_security_path,
             workspace=self.workspace,
@@ -116,30 +144,30 @@ class ServiceContainer:
         self.tool_hub = ToolHub(metrics=self.metrics, audit=self.audit)
         self._register_tools()
 
-        # 9) 模型路由与四阶段智能体编排。
         self.model_router = ModelRouter.from_file(self.settings.model_routing_path)
         self.planner = PlannerAgent()
         self.retriever = RetrieverAgent(self.rag_retriever)
         self.executor = ExecutorAgent(self.tool_hub)
         self.reviewer = ReviewerAgent()
+        self.intent_analyzer = IntentAnalyzer()
         self.orchestrator = OrchestratorService(
             planner=self.planner,
-            retriever=self.retriever,
             executor=self.executor,
             reviewer=self.reviewer,
             model_router=self.model_router,
             memory=self.memory_service,
             context_manager=self.context_manager,
             prompt_assembly=self.prompt_assembly,
-            skill_context=self.skill_context,
+            skill_registry=self.skill_registry,
             tool_hub=self.tool_hub,
             trace=self.trace,
             metrics=self.metrics,
             audit=self.audit,
+            intent_analyzer=self.intent_analyzer,
             max_skill_items=self.settings.prompt_skill_max_items,
+            top_k_skills=self.settings.skill_retrieval_top_k,
         )
 
-        # 10) 异步任务执行面：队列后端 + 任务管理器。
         self.queue_backend = self._build_queue_backend()
         self.task_manager = TaskManager(
             orchestrator=self.orchestrator,
@@ -149,13 +177,6 @@ class ServiceContainer:
         )
 
     def _register_tools(self) -> None:
-        """注册平台默认工具。
-
-        说明：
-        - 先构造 `WebFetchTool`，再将其复用给 `WebSearchTool`，避免重复实现抓取策略。
-        - 工具权限和审计统一由 `ToolHub` 管控。
-        """
-        # 步骤：执行 `_register_tools` 的核心处理逻辑。
         fetch_tool = WebFetchTool(self.tool_security)
         self.tool_hub.register(SendEmailTool())
         self.tool_hub.register(CreateCalendarEventTool())
@@ -165,13 +186,6 @@ class ServiceContainer:
         self.tool_hub.register(DatabaseTool(self.settings.mysql_dsn, security=self.tool_security))
 
     def _build_mysql_engine(self, dsn: str) -> Engine | None:
-        """构建 MySQL 引擎并执行连通性探测。
-
-        行为策略：
-        - `prod` 环境：数据库不可用时直接抛错，阻止服务以降级模式启动。
-        - `dev/test` 环境：记录告警并回退到内存仓储，便于本地开发与 CI。
-        """
-        # 步骤：执行 `_build_mysql_engine` 的核心处理逻辑。
         try:
             engine = create_engine(dsn, pool_pre_ping=True)
             with engine.connect() as conn:
@@ -184,10 +198,8 @@ class ServiceContainer:
             return None
 
     def _build_queue_backend(self) -> QueueBackend:
-        """按配置构建队列后端，并在必要时执行降级。"""
         backend = (self.settings.task_queue_backend or "memory").strip().lower()
         if backend == "redis":
-            # 先做网络可达性探测，避免在不可达地址上长时间阻塞初始化。
             reachable = self._is_redis_reachable(self.settings.redis_url)
             if not reachable:
                 if self._is_prod_env():
@@ -200,7 +212,6 @@ class ServiceContainer:
                     queue_name=self.settings.redis_queue_name,
                 )
             except Exception as exc:
-                # Redis 客户端初始化失败也走同样的 prod/dev 分流策略。
                 if self._is_prod_env():
                     raise RuntimeError(f"redis backend init failed in prod: {exc}") from exc
                 logger.warning("redis backend init failed, fallback to memory queue: %s", exc)
@@ -208,14 +219,10 @@ class ServiceContainer:
         return InMemoryQueueBackend()
 
     def _is_prod_env(self) -> bool:
-        """是否为生产环境判定。"""
-        # 步骤：执行 `_is_prod_env` 的核心处理逻辑。
         return (self.settings.env or "").strip().lower() in {"prod", "production"}
 
     @staticmethod
     def _is_redis_reachable(redis_url: str) -> bool:
-        """快速探测 Redis 主机端口连通性。"""
-        # 步骤：执行 `_is_redis_reachable` 的核心处理逻辑。
         parsed = urlparse(redis_url)
         host = parsed.hostname
         port = parsed.port or 6379
@@ -230,8 +237,4 @@ class ServiceContainer:
 
 @lru_cache(maxsize=1)
 def get_container() -> ServiceContainer:
-    """获取进程级容器单例。"""
-    # 步骤：执行 `get_container` 的核心处理逻辑。
     return ServiceContainer()
-
-

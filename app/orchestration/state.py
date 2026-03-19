@@ -1,23 +1,17 @@
-﻿"""编排状态定义：声明流程节点间共享状态字段。"""
+﻿"""Orchestration state declaration for graph execution."""
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TypedDict
 
-from app.schemas.api import Action, Citation
+from app.schemas.api import ExecutionTraceRecord, IntentSummary, SkillSelection, TaskGraphSpec, VerificationReport
 
 
 class OrchestrationState(TypedDict, total=False):
     trace_id: str
-    prompt: str
-    task_type: str
-    sensitivity: str
-    planner_steps: list[dict[str, Any]]
-    citations: list[Citation]
-    actions: list[Action]
-    answer: str
-    confidence: float
-    fallback_triggered: bool
-
-
-
+    intent: IntentSummary
+    task_graph: TaskGraphSpec
+    skill_mapping: list[SkillSelection]
+    execution_trace: list[ExecutionTraceRecord]
+    verification: VerificationReport
+    status: str

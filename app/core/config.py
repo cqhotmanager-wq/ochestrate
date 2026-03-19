@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # 基础数据存储
     mysql_dsn: str = "mysql+pymysql://root:123456@127.0.0.1:3306/ochestrate"
     milvus_uri: str = "http://localhost:19530"
+    milvus_collection_name: str = "agent_vectors"
+    vector_dimension: int = 64
+    vector_use_milvus: bool = True
 
     # 模型路由与工具安全策略配置文件
     model_routing_path: Path = Path("config/model_routing.yaml")
@@ -36,6 +39,17 @@ class Settings(BaseSettings):
     skill_scan_dirs: list[Path] = [Path("config/skills"), Path.home() / ".codex" / "skills"]
     skill_scan_glob: str = "**/SKILL.md"
     prompt_skill_max_items: int = 100
+    skill_retrieval_top_k: int = 5
+
+    # Embedding providers
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_timeout_seconds: int = 20
+    embedding_openai_api_key: str = ""
+    embedding_azure_api_key: str = ""
+    embedding_azure_endpoint: str = ""
+    embedding_azure_api_version: str = "2024-02-01"
+    embedding_allow_mock_fallback: bool = True
 
     # 审计与异步任务配置
     audit_log_path: Path = Path("logs/audit.log")
