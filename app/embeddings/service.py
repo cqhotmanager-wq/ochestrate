@@ -1,4 +1,4 @@
-﻿"""Embedding service with configurable cloud providers and mock fallback."""
+"""Embedding service with configurable HTTP endpoint and mock fallback."""
 
 from __future__ import annotations
 
@@ -17,13 +17,12 @@ class EmbeddingClient(Protocol):
 
 @dataclass
 class EmbeddingConfig:
-    provider: str
-    model: str
+    url: str | None = None
+    model: str = ""
     timeout_seconds: int = 15
-    openai_api_key: str | None = None
-    azure_api_key: str | None = None
-    azure_endpoint: str | None = None
-    azure_api_version: str = "2024-02-01"
+    api_key: str | None = None
+    api_key_header: str = "Authorization"
+    api_key_prefix: str = "Bearer"
     allow_mock_fallback: bool = True
 
 
@@ -40,59 +39,46 @@ class MockEmbeddingClient:
         return vector
 
 
-class OpenAIEmbeddingClient:
-    def __init__(self, api_key: str, model: str, timeout_seconds: int) -> None:
-        self._api_key = api_key
-        self._model = model
-        self._timeout_seconds = timeout_seconds
-
-    def embed(self, text: str) -> list[float]:
-        response = requests.post(
-            "https://api.openai.com/v1/embeddings",
-            timeout=self._timeout_seconds,
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-            },
-            json={"model": self._model, "input": text},
-        )
-        response.raise_for_status()
-        payload = response.json()
-        return payload["data"][0]["embedding"]
-
-
-class AzureOpenAIEmbeddingClient:
+class HttpEmbeddingClient:
     def __init__(
         self,
-        api_key: str,
-        endpoint: str,
-        deployment: str,
+        url: str,
+        model: str,
         timeout_seconds: int,
-        api_version: str,
+        api_key: str | None = None,
+        api_key_header: str = "Authorization",
+        api_key_prefix: str = "Bearer",
     ) -> None:
-        self._api_key = api_key
-        self._endpoint = endpoint.rstrip("/")
-        self._deployment = deployment
+        self._url = url
+        self._model = model
         self._timeout_seconds = timeout_seconds
-        self._api_version = api_version
+        self._api_key = api_key
+        self._api_key_header = api_key_header
+        self._api_key_prefix = api_key_prefix
 
     def embed(self, text: str) -> list[float]:
-        url = (
-            f"{self._endpoint}/openai/deployments/{self._deployment}/embeddings"
-            f"?api-version={self._api_version}"
-        )
+        payload: dict[str, str] = {"input": text}
+        if self._model:
+            payload["model"] = self._model
+
+        headers = {"Content-Type": "application/json"}
+        key_header = (self._api_key_header or "").strip()
+        if self._api_key and key_header:
+            if key_header.lower() == "authorization":
+                prefix = (self._api_key_prefix or "").strip()
+                headers[key_header] = f"{prefix} {self._api_key}" if prefix else self._api_key
+            else:
+                headers[key_header] = self._api_key
+
         response = requests.post(
-            url,
+            self._url,
             timeout=self._timeout_seconds,
-            headers={
-                "api-key": self._api_key,
-                "Content-Type": "application/json",
-            },
-            json={"input": text},
+            headers=headers,
+            json=payload,
         )
         response.raise_for_status()
-        payload = response.json()
-        return payload["data"][0]["embedding"]
+        response_payload = response.json()
+        return response_payload["data"][0]["embedding"]
 
 
 class EmbeddingService:
@@ -103,31 +89,18 @@ class EmbeddingService:
         self._client = self._build_client(config)
 
     def _build_client(self, config: EmbeddingConfig) -> EmbeddingClient:
-        provider = (config.provider or "mock").strip().lower()
-        if provider == "mock":
-            return self._mock
+        url = (config.url or "").strip()
+        if not url:
+            return self._fallback_or_raise("embedding url missing")
 
-        if provider == "openai":
-            if not config.openai_api_key:
-                return self._fallback_or_raise("openai api key missing")
-            return OpenAIEmbeddingClient(
-                api_key=config.openai_api_key,
-                model=config.model,
-                timeout_seconds=config.timeout_seconds,
-            )
-
-        if provider in {"azure", "azure_openai"}:
-            if not config.azure_api_key or not config.azure_endpoint:
-                return self._fallback_or_raise("azure embedding config missing")
-            return AzureOpenAIEmbeddingClient(
-                api_key=config.azure_api_key,
-                endpoint=config.azure_endpoint,
-                deployment=config.model,
-                timeout_seconds=config.timeout_seconds,
-                api_version=config.azure_api_version,
-            )
-
-        return self._fallback_or_raise(f"unknown embedding provider: {provider}")
+        return HttpEmbeddingClient(
+            url=url,
+            model=config.model,
+            timeout_seconds=config.timeout_seconds,
+            api_key=config.api_key,
+            api_key_header=config.api_key_header,
+            api_key_prefix=config.api_key_prefix,
+        )
 
     def _fallback_or_raise(self, reason: str) -> EmbeddingClient:
         if self._env in {"prod", "production"} and not self._config.allow_mock_fallback:

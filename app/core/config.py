@@ -41,14 +41,13 @@ class Settings(BaseSettings):
     prompt_skill_max_items: int = 100
     skill_retrieval_top_k: int = 5
 
-    # Embedding providers
-    embedding_provider: str = "openai"
+    # Embedding service
+    embedding_url: str = ""
     embedding_model: str = "text-embedding-3-small"
     embedding_timeout_seconds: int = 20
-    embedding_openai_api_key: str = ""
-    embedding_azure_api_key: str = ""
-    embedding_azure_endpoint: str = ""
-    embedding_azure_api_version: str = "2024-02-01"
+    embedding_api_key: str = ""
+    embedding_api_key_header: str = "Authorization"
+    embedding_api_key_prefix: str = "Bearer"
     embedding_allow_mock_fallback: bool = True
 
     # 审计与异步任务配置

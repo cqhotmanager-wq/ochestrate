@@ -26,7 +26,7 @@ def test_prod_requires_mysql(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_prod_requires_redis_when_backend_is_redis(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_ENV", "prod")
     monkeypatch.setenv("AGENT_MYSQL_DSN", "sqlite+pysqlite:///:memory:")
-    monkeypatch.setenv("AGENT_EMBEDDING_PROVIDER", "mock")
+    monkeypatch.setenv("AGENT_EMBEDDING_URL", "http://127.0.0.1:11434/v1/embeddings")
     monkeypatch.setenv("AGENT_TASK_QUEUE_BACKEND", "redis")
     monkeypatch.setenv("AGENT_REDIS_URL", "redis://127.0.0.1:65005/0")
 

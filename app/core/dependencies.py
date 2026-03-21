@@ -90,13 +90,12 @@ class ServiceContainer:
 
         self.embedding_service = EmbeddingService(
             config=EmbeddingConfig(
-                provider=self.settings.embedding_provider,
+                url=self.settings.embedding_url or None,
                 model=self.settings.embedding_model,
                 timeout_seconds=self.settings.embedding_timeout_seconds,
-                openai_api_key=self.settings.embedding_openai_api_key or None,
-                azure_api_key=self.settings.embedding_azure_api_key or None,
-                azure_endpoint=self.settings.embedding_azure_endpoint or None,
-                azure_api_version=self.settings.embedding_azure_api_version,
+                api_key=self.settings.embedding_api_key or None,
+                api_key_header=self.settings.embedding_api_key_header,
+                api_key_prefix=self.settings.embedding_api_key_prefix,
                 allow_mock_fallback=allow_mock_fallback,
             ),
             env=self.settings.env,

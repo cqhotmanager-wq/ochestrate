@@ -82,7 +82,7 @@ def test_skill_registry_vector_retrieval_top_k(tmp_path: Path) -> None:
     registry = SkillRegistryService(
         context_service=context_service,
         repository=SkillRegistryRepository(session_factory=None),
-        embedding_service=EmbeddingService(EmbeddingConfig(provider="mock", model="mock"), env="test"),
+        embedding_service=EmbeddingService(EmbeddingConfig(model="mock"), env="test"),
         vector_gateway=VectorStoreGateway(
             milvus_uri="http://localhost:19530",
             use_milvus=False,
@@ -101,7 +101,7 @@ def test_long_term_memory_structured_write_and_search() -> None:
         short_turns=2,
         long_ttl_days=30,
         long_term_repository=LongTermMemoryRepository(session_factory=None),
-        embedding_service=EmbeddingService(EmbeddingConfig(provider="mock", model="mock"), env="test"),
+        embedding_service=EmbeddingService(EmbeddingConfig(model="mock"), env="test"),
         vector_gateway=VectorStoreGateway(milvus_uri="http://localhost:19530", use_milvus=False),
     )
 
